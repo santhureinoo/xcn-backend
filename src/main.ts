@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const port = parseInt(process.env.PORT || '10000', 10);
+  const port = parseInt(process.env.PORT || '8080', 10);
   console.log(`Starting application on port ${port}`);
   
   try {
