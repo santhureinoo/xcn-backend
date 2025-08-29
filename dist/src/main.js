@@ -24,7 +24,8 @@ async function bootstrap() {
         ],
         credentials: true,
     });
-    await app.listen(10000);
+    const port = process.env.PORT || 10000;
+    await app.listen(port);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
