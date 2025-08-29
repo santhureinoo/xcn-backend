@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build:prod",
     "build:dev": "nest build --swc -c tsconfig.prod.json",
-    "build:prod": "nest build --webpack --webpackPath webpack.config.js -c tsconfig.prod.json",
+    "build:prod": "nest build -c tsconfig.prod.json",
     "build:swc": "nest build --swc -c tsconfig.prod.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

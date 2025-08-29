@@ -12,8 +12,14 @@ console.log('Working directory:', process.cwd());
 
 // Helper function to copy directories recursively
 function copyDirSync(src, dest) {
+  console.log(`Copying directory from ${src} to ${dest}`);
+  if (!fs.existsSync(src)) {
+    console.log(`Source directory ${src} does not exist`);
+    return;
+  }
+  
   fs.mkdirSync(dest, { recursive: true });
-  const entries = fs.readdirSync(src, { withFileTypes: true });
+ const entries = fs.readdirSync(src, { withFileTypes: true });
   
   for (let entry of entries) {
     const srcPath = path.join(src, entry.name);
@@ -25,11 +31,42 @@ function copyDirSync(src, dest) {
       fs.copyFileSync(srcPath, destPath);
     }
   }
+ console.log(`Finished copying directory from ${src} to ${dest}`);
 }
 
 // Helper function to copy files
 function copyFileSync(src, dest) {
+  console.log(`Copying file from ${src} to ${dest}`);
+  if (!fs.existsSync(src)) {
+    console.log(`Source file ${src} does not exist`);
+    return;
+  }
   fs.copyFileSync(src, dest);
+  console.log(`Finished copying file from ${src} to ${dest}`);
+}
+
+// Helper function to remove a directory recursively
+function removeDirSync(dir) {
+  console.log(`Removing directory: ${dir}`);
+  if (!fs.existsSync(dir)) {
+    console.log(`Directory ${dir} does not exist`);
+    return;
+  }
+  
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  
+  for (let entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    
+    if (entry.isDirectory()) {
+      removeDirSync(entryPath);
+    } else {
+      fs.unlinkSync(entryPath);
+    }
+  }
+  
+  fs.rmdirSync(dir);
+  console.log(`Finished removing directory: ${dir}`);
 }
 
 try {
@@ -47,15 +84,27 @@ try {
   console.log('2. Preparing deployment package...');
   
   // Copy dist folder
+  console.log('Checking for dist folder...');
   if (fs.existsSync('dist')) {
+    console.log('dist folder found, copying...');
     copyDirSync('dist', path.join(deployDir, 'dist'));
     console.log('  - Copied dist folder');
-  } else {
+    
+    // Remove the deploy directory from the copied dist folder
+    const copiedDeployDir = path.join(deployDir, 'dist', 'deploy');
+    if (fs.existsSync(copiedDeployDir)) {
+      console.log('Removing deploy directory from copied dist folder...');
+      removeDirSync(copiedDeployDir);
+      console.log('  - Removed deploy directory from copied dist folder');
+    }
+ } else {
     console.log('  - Warning: dist folder not found');
   }
   
   // Copy prisma folder
+ console.log('Checking for prisma folder...');
  if (fs.existsSync('prisma')) {
+    console.log('prisma folder found, copying...');
     copyDirSync('prisma', path.join(deployDir, 'prisma'));
     console.log('  - Copied prisma folder');
   } else {
@@ -63,15 +112,19 @@ try {
   }
   
   // Copy .env if it exists
+  console.log('Checking for .env file...');
   if (fs.existsSync('.env')) {
+    console.log('.env file found, copying...');
     copyFileSync('.env', path.join(deployDir, '.env'));
     console.log('  - Copied .env file');
   }
   
-  console.log('3. Creating deployment package.json...');
+ console.log('3. Creating deployment package.json...');
   
   // Create a simplified package.json for deployment
-  const packageJson = require('./package.json');
+  const packageJsonContent = fs.readFileSync('./package.json', 'utf8');
+  const packageJson = JSON.parse(packageJsonContent);
+  
   const deployPackageJson = {
     name: packageJson.name,
     version: packageJson.version,
@@ -149,10 +202,10 @@ npm run db:seed
 `;
     fs.writeFileSync(readmeDest, readmeContent);
     console.log('  - Created README.md');
-  }
+ }
   
   console.log('\nDeployment package created successfully!');
-  console.log('Deployment files are in the "deploy" directory.');
+ console.log('Deployment files are in the "deploy" directory.');
   console.log('\nTo deploy to RENDER:');
   console.log('1. Navigate to the deploy directory: cd deploy');
   console.log('2. Commit the files to your repository');

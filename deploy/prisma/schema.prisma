@@ -1,0 +1,463 @@
+// This is your Prisma schema file.
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NEW: Region-Game-Vendor relationship table
+model RegionGameVendor {
+  id          String   @id @default(uuid())
+  region      String   // "Malaysia", "Myanmar", "Brazil", etc.
+  gameName    String   // "Mobile Legends", "Free Fire", etc.
+  vendorName  String   // "Razor Gold", "Smile", "Garena", etc.
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Indexes for efficient filtering
+  @@index([region])
+  @@index([gameName])
+  @@index([vendorName])
+  @@index([region, gameName])
+  @@index([region, vendorName])
+  @@index([gameName, vendorName])
+  @@unique([region, gameName, vendorName]) // Prevent duplicates
+  
+  @@map("region_game_vendors")
+}
+
+// NEW: Markup table for additional percentage on base price
+model Markup {
+  id              String    @id @default(uuid())
+  name            String    // "Service Fee", "Platform Fee", "Regional Tax", etc.
+  description     String?   // Optional description
+  
+  // Either percentage OR flat amount markup, not both
+  percentageAdd   Float?    // e.g., 10.0 for 10% markup (500 -> 550)
+  flatAmountAdd   Float?    // e.g., 50.0 for 50 xCoins markup (500 -> 550)
+  
+  // Markup settings
+  isActive        Boolean   @default(true)
+  startDate       DateTime? // When markup starts (optional)
+  endDate         DateTime? // When markup ends (optional)
+  
+  // Admin tracking
+  createdBy       String?   // Admin user ID who created
+  updatedBy       String?   // Admin user ID who last updated
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  packages        Package[] // One markup can be applied to many packages
+  
+  @@map("markups")
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  firstName           String
+  lastName            String
+  password            String
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+  otpSecret           String?
+  isVerified          Boolean   @default(false)
+  
+  // User profile fields
+  phone               String?
+  address             String?
+  avatar              String?
+  
+  // Role and status
+  role                UserRole  @default(RETAILER)
+  status              UserStatus @default(ACTIVE)
+  
+  // Financial fields
+  balance             Float     @default(0)
+  totalSpent          Float     @default(0)
+  totalOrders         Int       @default(0)
+  
+  // Reseller specific fields
+  commission          Float?
+  totalEarnings       Float?
+  referralCode        String?   @unique
+  referredBy          String?
+  downlineCount       Int?      @default(0)
+  
+  // Timestamps
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  transactions        Transaction[]
+  walletTransactions  XCoinTransaction[]
+  smileCoinBalances   SmileCoinBalance[]  // New relation
+  
+  @@map("users")
+}
+
+model VendorExchangeRate {
+  id              String      @id @default(uuid())
+  vendorName      String      // "Smile", "Razor Gold", etc.
+  vendorCurrency  String      // "SMILE_COIN", "RAZOR_GOLD_COIN", etc.
+  xCoinRate       Float       // How many xCoins needed for 1 vendor coin
+  trend           RateTrend   @default(STABLE)
+  change24h       Float       @default(0)
+  isActive        Boolean     @default(true)
+  
+  // Rate history for rollback if needed
+  previousRate    Float?
+  rateHistory     Json?       // Store last 10 rate changes
+  
+  // Admin tracking
+  updatedBy       String?     // Admin user ID who updated
+  updateReason    String?     // Why was it updated
+
+  packages        Package[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@unique([vendorName])
+  @@map("vendor_exchange_rates")
+}
+
+model Package {
+  id                  String      @id @default(uuid())
+  name                String
+  description         String?
+  price               Float       // Platform price in xCoin (final calculated price)
+  basePrice           Float?      // NEW: Base price before markup (calculated in frontend)
+  imageUrl            String?
+  type                PackageType
+  gameId              String
+  featured            Boolean     @default(false)
+  discount            Float?      // DEPRECATED: Keep for backward compatibility
+  amount              Int?        // Diamond/currency amount
+  duration            Int?        // For subscription packages
+  packageStatus       Int         @default(1) // 1: Active, 2: Disabled, 3: Deleted
+
+  // Enhanced pricing fields
+  baseVendorCost      Float      @default(0) // Cost in vendor coins (e.g., 1 SMILE_COIN)
+  vendorCurrency      String     @default("SMILE_COIN") // "SMILE_COIN", "RAZOR_GOLD_COIN"
+  markupPercent       Float      @default(15) // Platform markup %
+
+  // Price locking
+  lockedPrice         Float?      // Locked xCoin price (calculated)
+  lastPriceUpdate     DateTime?   // When price was last calculated
+  priceVersion        Int         @default(1) // Version for price changes
+  isPriceLocked       Boolean     @default(false) // Flag to prevent auto price updates
+  
+  // Rounding preferences
+  roundToNearest      Float       @default(1) // Round to nearest 1, 5, 10, etc.
+
+  // NEW: Markup relation
+  markupId            String?     // Foreign key to Markup table
+  markupAppliedAt     DateTime?   // When markup was applied
+  
+  // Optional: Add relation to vendor exchange rate
+  vendorRate          VendorExchangeRate? @relation(fields: [vendor], references: [vendorName])
+  
+  // NEW: Markup relation
+  appliedMarkup       Markup?     @relation(fields: [markupId], references: [id])
+  
+  // Admin management fields
+  region              String
+  gameName            String
+  vendor              String
+  vendorPackageCode   String
+  vendorPrice         Float       // Original vendor price
+  currency            String      // R$, USD, etc
+  resellKeyword       String?
+  status              PackageStatus @default(ACTIVE)
+  stock               Int?
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  // Relations - Junction table for many-to-many relationship between Transaction and Package
+  transactionPackages TransactionPackage[]
+  
+  @@map("packages")
+}
+
+// Junction table for many-to-many relationship between Transaction and Package
+model TransactionPackage {
+  id            String      @id @default(uuid())
+  transactionId String
+  packageId     String
+  quantity      Int         @default(1)
+  unitPrice     Float       // Final price at time of purchase (with markup)
+  totalPrice    Float       // quantity * unitPrice
+  
+  // NEW: Markup tracking at purchase time
+  basePrice     Float?      // Base price before markup
+  markupApplied Float?      // Markup amount applied at purchase
+  markupType    String?     // "PERCENTAGE" or "FLAT_AMOUNT"
+  
+  createdAt     DateTime    @default(now())
+  
+  // Relations
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  package       Package     @relation(fields: [packageId], references: [id])
+  
+  @@map("transaction_packages")
+}
+
+model Currency {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  symbol      String
+  flag        String?
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
+  exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
+  
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id            String   @id @default(uuid())
+  fromCurrency  String
+  toCurrency    String
+  rate          Float
+  trend         RateTrend @default(STABLE)
+  change24h     Float    @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  fromCurrencyRef Currency @relation("FromCurrency", fields: [fromCurrency], references: [code])
+  toCurrencyRef   Currency @relation("ToCurrency", fields: [toCurrency], references: [code])
+  
+  @@unique([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  userId            String
+  type              TransactionType
+  status            TransactionStatus @default(PENDING)
+
+  // Price locking at purchase time
+  packagePriceAtPurchase  Float?    // xCoin price when purchased
+  packagePriceVersion     Int?      // Price version when purchased
+  vendorRateAtPurchase    Float?    // Vendor rate when purchased
+  exchangeRateSnapshot    Json?     // Full rate snapshot for audit
+  
+  // Common fields
+  xCoinAmount       Float?
+  totalCost         Float?
+  quantity          Int               @default(1)
+  notes             String?
+  adminNotes        String?
+  
+  // Package purchase specific
+  gameUserId        String?
+  serverId          String?
+  playerName        String?
+  region            String?
+  
+  // xCoin purchase specific
+  fromCurrency      String?
+  fromAmount        Float?
+  exchangeRate      Float?
+  processingFee     Float?
+  paymentMethod     String?
+  paymentReference  String?
+  
+  // Reseller request specific
+  requestedAmount   Float?
+  approvedAmount    Float?
+  paymentProof      String?
+  externalPaymentRef String?
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  
+  // Vendor exchange specific
+  vendorName        String?
+  vendorCurrency    String?
+  vendorCoinAmount  Float?
+  vendorTransactionId String?
+  relatedTransactionId String?
+  
+  // Special pricing for resellers
+  specialPricing    Boolean   @default(false)
+  priceType         String?   // 'BASE_VENDOR_COST' or 'VENDOR_PRICE'
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  user              User     @relation(fields: [userId], references: [id])
+  transactionPackages TransactionPackage[]
+  orders            Order[]
+  
+  @@map("transactions")
+}
+
+model XCoinTransaction {
+  id            String              @id @default(uuid())
+  userId        String
+  type          XCoinTransactionType
+  amount        Float
+  fromCurrency  String?
+  fromAmount    Float?
+  rate          Float?
+  fees          Float               @default(0)
+  status        TransactionStatus   @default(PENDING)
+  description   String
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user          User @relation(fields: [userId], references: [id])
+  
+  @@map("xcoin_transactions")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  transactionId   String
+  gameUserId      String
+  serverId        String
+  playerName      String?
+  packageKeywords String      // "wkp+86"
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+  vendorCalls     VendorCall[]
+}
+
+model VendorCall {
+id                String           @id @default(cuid())
+orderId           String
+vendorName        String
+vendorPackageCode String
+status            VendorCallStatus @default(PENDING)
+vendorResponse    Json?
+vendorOrderId     String?
+errorMessage      String?
+
+// Retry mechanism fields
+  retryCount        Int              @default(0)
+maxRetries        Int              @default(3)
+  nextRetryAt       DateTime?
+  retryIntervalMs   Int              @default(5000) // 5 seconds initial
+  lastAttemptAt     DateTime?
+  
+  // Request/response tracking
+  requestPayload    Json?
+  responseCode      Int?
+  responseTime      Int?             // milliseconds
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  order             Order            @relation(fields: [orderId], references: [id])
+}
+
+// Enums
+enum UserRole {
+  RETAILER
+  RESELLER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PackageType {
+  DIAMOND
+  WEEKLY
+  MONTHLY
+  SPECIAL
+  SUBSCRIPTION
+}
+
+enum PackageStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+}
+
+enum TransactionType {
+  RETAILER_XCOIN_PURCHASE
+  RETAILER_PACKAGE_PURCHASE  
+  RESELLER_BULK_PURCHASE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PROCESSING
+}
+
+enum XCoinTransactionType {
+  PURCHASE
+  SPEND
+  REFUND
+}
+
+model SmileCoinBalance {
+  id          String   @id @default(uuid())
+  userId      String
+  region      String   // "Brazil", "Thailand", "Philippines", etc.
+  balance     Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, region]) // Ensures one balance per region per user
+  @@map("smile_coin_balances")
+}
+
+enum RateTrend {
+  UP
+  DOWN
+  STABLE
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum VendorCallStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}

@@ -12,18 +12,22 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              configFile: path.resolve(__dirname, 'tsconfig.prod.json'),
+              transpileOnly: true, // This reduces memory usage
+              compilerOptions: {
+                module: 'commonjs',
+                target: 'es2022'
+              },
+              // Reduce memory usage
+              experimentalWatchApi: false,
+            }
+          }
+        ],
         exclude: /node_modules/,
-        options: {
-          configFile: path.resolve(__dirname, 'tsconfig.prod.json'),
-          transpileOnly: true, // This reduces memory usage
-          compilerOptions: {
-            module: 'commonjs',
-            target: 'es2022'
-          },
-          // Reduce memory usage
-          experimentalWatchApi: false,
-        }
       },
     ],
   },

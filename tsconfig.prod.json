@@ -5,7 +5,7 @@
     "declaration": false,
     "incremental": false,
     "removeComments": true,
-    "target": "es2022" // Use a slightly older target to reduce memory usage
+    "target": "es2022"
   },
   "exclude": [
     "node_modules", 
