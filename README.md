@@ -72,7 +72,28 @@ With Mau, you can deploy your application in just a few clicks, allowing you to 
 
 ## Deploying to RENDER (Free Tier)
 
-If you're using RENDER's free tier, you might encounter memory issues during the build process. To avoid this, you can build the application locally and deploy the built files:
+If you're using RENDER's free tier, you might encounter memory issues during the build process. To avoid this, you can build the application locally and commit the built files:
+
+1. Run the build and commit script:
+   ```bash
+   npm run build-and-commit
+   ```
+   
+2. This will build the application and add the `dist` folder to git
+
+3. Commit and push the changes:
+   ```bash
+   git commit -m "Build application"
+   git push
+   ```
+
+4. Set up your RENDER service with these settings:
+   - Build command: `npm install`
+   - Start command: `npm start`
+
+This approach skips the build process on RENDER's servers, avoiding memory limitations while still allowing you to deploy your application.
+
+Alternatively, you can use the deploy script which creates a separate deployment package:
 
 1. Run the deployment script:
    ```bash
@@ -86,8 +107,6 @@ If you're using RENDER's free tier, you might encounter memory issues during the
 4. Set up your RENDER service with these settings:
    - Build command: `npm install`
    - Start command: `npm start`
-
-This approach skips the build process on RENDER's servers, avoiding memory limitations while still allowing you to deploy your application.
 
 ## Resources
 

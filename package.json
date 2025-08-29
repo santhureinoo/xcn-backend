@@ -16,6 +16,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "deploy": "node scripts/deploy.js",
+    "build-and-commit": "node scripts/build-and-commit.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
