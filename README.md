@@ -70,6 +70,25 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+## Deploying to RENDER (Free Tier)
+
+If you're using RENDER's free tier, you might encounter memory issues during the build process. To avoid this, you can build the application locally and deploy the built files:
+
+1. Run the deployment script:
+   ```bash
+   npm run deploy
+   ```
+   
+2. This will create a `deploy` directory with the built files
+
+3. Commit the contents of the `deploy` directory to your repository
+
+4. Set up your RENDER service with these settings:
+   - Build command: `npm install`
+   - Start command: `npm start`
+
+This approach skips the build process on RENDER's servers, avoiding memory limitations while still allowing you to deploy your application.
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
