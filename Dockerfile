@@ -11,8 +11,12 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy built application files
-COPY dist/ ./dist/
+COPY dist/src/ ./dist/src/
+COPY dist/prisma/ ./dist/prisma/
 COPY prisma/ ./prisma/
+
+# Verify main.js exists
+RUN ls -la dist/src/main.js
 
 # Expose port (Cloud Run will set the PORT environment variable)
 EXPOSE 8080
