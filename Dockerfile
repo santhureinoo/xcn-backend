@@ -7,13 +7,18 @@ WORKDIR /usr/src/app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies including Prisma CLI
 RUN npm ci --only=production
+
+# Copy Prisma files
+COPY prisma/ ./prisma/
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Copy built application files
 COPY dist/src/ ./dist/src/
 COPY dist/prisma/ ./dist/prisma/
-COPY prisma/ ./prisma/
 
 # Verify main.js exists
 RUN ls -la dist/src/main.js
