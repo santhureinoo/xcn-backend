@@ -21,4 +21,4 @@ EXPOSE 8080
 # RUN npx prisma migrate deploy
 
 # Start the application
-CMD [ "node", "dist/main.js" ]
+CMD [ "node", "dist/src/main.js" ]
