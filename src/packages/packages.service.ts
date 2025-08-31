@@ -98,11 +98,17 @@ export class PackagesService {
         throw new BadRequestException('vendorPackageCodes must be a non-empty array');
       }
 
+      // Validate that the vendor exists in VendorExchangeRate table
       const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
         where: {
-          vendorName: createPackageDto.vendor
+          vendorName: createPackageDto.vendor,
+          isActive: true
         }
       });
+
+      if (!vendorExchangeRate) {
+        throw new BadRequestException(`Vendor '${createPackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+      }
 
       const packageData = await this.prisma.package.create({
         data: {
@@ -121,7 +127,7 @@ export class PackagesService {
           vendor: createPackageDto.vendor,
           vendorPackageCode: createPackageDto.vendorPackageCodes.join(','), // Store as comma-separated
           vendorPrice: Number(createPackageDto.vendorPrice) || 0,
-          vendorCurrency: vendorExchangeRate?.vendorCurrency || '',
+          vendorCurrency: vendorExchangeRate.vendorCurrency || '',
           currency: createPackageDto.currency || 'USD',
           // packageStatus: createPackageDto.packageStatus || 1,
           packageStatus: 1,
@@ -345,6 +351,25 @@ export class PackagesService {
       const existingPackage = await this.findById(id);
       if (!existingPackage || existingPackage.length === 0) {
         throw new NotFoundException(`Package with ID ${id} not found`);
+      }
+
+      // If vendor is being updated, validate that the vendor exists in VendorExchangeRate table
+      if (updatePackageDto.vendor !== undefined) {
+        const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+          where: {
+            vendorName: updatePackageDto.vendor,
+            isActive: true
+          }
+        });
+
+        if (!vendorExchangeRate) {
+          throw new BadRequestException(`Vendor '${updatePackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+        }
+        
+        // Also update the vendorCurrency if it wasn't explicitly provided
+        if (updatePackageDto.vendorCurrency === undefined) {
+          updatePackageDto.vendorCurrency = vendorExchangeRate.vendorCurrency;
+        }
       }
 
       // Prepare update data

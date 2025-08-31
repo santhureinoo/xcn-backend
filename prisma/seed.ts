@@ -10,11 +10,16 @@ async function main() {
   await prisma.xCoinTransaction.deleteMany();
   await prisma.vendorCall.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.transactionPackage.deleteMany(); // Add this line to clear transaction packages first
   await prisma.transaction.deleteMany();
+  await prisma.package.deleteMany(); // Add this line to clear packages before markups
+  await prisma.markup.deleteMany(); // Add this line to clear markups
   await prisma.exchangeRate.deleteMany();
   await prisma.currency.deleteMany();
   await prisma.regionGameVendor.deleteMany(); // Add this line
+  await prisma.smileCoinBalance.deleteMany(); // Add this line to clear smile coin balances before users
   await prisma.user.deleteMany();
+  await prisma.vendorExchangeRate.deleteMany(); // Add this line
 
   console.log('🗑️  Cleared existing data');
 
@@ -82,6 +87,38 @@ async function main() {
   });
 
   console.log('🎮 Created region-game-vendor relationships');
+
+  // Seed Vendor Exchange Rates
+  const vendorExchangeRates = await prisma.vendorExchangeRate.createMany({
+    data: [
+      {
+        id: '1',
+        vendorName: 'Smile',
+        vendorCurrency: 'SMILE_COIN',
+        xCoinRate: 1000,
+        trend: 'UP',
+        change24h: 0,
+        isActive: true,
+        updatedBy: 'admin',
+        createdAt: new Date('2025-06-15T14:40:59.968Z'),
+        updatedAt: new Date('2025-06-16T18:35:38.973Z'),
+      },
+      {
+        id: '2',
+        vendorName: 'Razor Gold',
+        vendorCurrency: 'RAZOR_COIN',
+        xCoinRate: 5000,
+        trend: 'DOWN',
+        change24h: -50,
+        isActive: true,
+        updatedBy: 'admin',
+        createdAt: new Date('2025-06-15T14:40:59.968Z'),
+        updatedAt: new Date('2025-06-16T20:20:24.147Z'),
+      },
+    ],
+  });
+
+  console.log('💱 Created vendor exchange rates');
 
   // Seed Currencies
   const currencies = await prisma.currency.createMany({
@@ -206,7 +243,7 @@ async function main() {
       {
         fromCurrency: 'IDR',
         toCurrency: 'XCN',
-        rate: 0.0067,
+        rate: 0.067,
         trend: 'STABLE',
         change24h: 0.2,
       },
@@ -257,7 +294,7 @@ async function main() {
         role: 'RETAILER',
         isVerified: true,
         balance: 500,
-        lastLoginAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        lastLoginAt: new Date(Date.now() - 2 * 60 * 1000),
       },
       {
         email: 'retailer2@example.com',
@@ -267,7 +304,7 @@ async function main() {
         role: 'RETAILER',
         isVerified: false,
         balance: 250,
-        lastLoginAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+        lastLoginAt: new Date(Date.now() - 12 * 60 * 1000),
       },
       {
         email: 'retailer3@example.com',
@@ -299,7 +336,7 @@ async function main() {
         role: 'RESELLER',
         isVerified: true,
         balance: 1500,
-        lastLoginAt: new Date(Date.now() - 30 * 60 * 60 * 1000),
+        lastLoginAt: new Date(Date.now() - 30 * 60 * 1000),
       },
     ],
   });
@@ -324,16 +361,10 @@ async function main() {
         userId: retailer.id,
         type: 'RETAILER_XCOIN_PURCHASE',
         status: 'COMPLETED',
-        fromAmount: 100,
-        fromCurrency: 'USD',
         totalCost: 100,
-        exchangeRate: 100,
-        processingFee: 2.5,
-        paymentMethod: 'Bank Transfer',
-        paymentReference: `TXN${Date.now()}${i}`,
         notes: 'XCoin purchase via bank transfer',
         adminNotes: 'Verified and approved',
-        createdAt: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - (i + 1) * 24 * 60 * 1000),
         updatedAt: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
       },
     });
@@ -365,17 +396,10 @@ async function main() {
         userId: retailer.id,
         type: 'RETAILER_XCOIN_PURCHASE',
         status: 'PENDING',
-        fromAmount: 50,
-        fromCurrency: 'USD',
         totalCost: 50,
-        exchangeRate: 100,
-        processingFee: 1.25,
-        paymentMethod: 'Bank Transfer',
-        paymentReference: `TXN${Date.now()}${i}PENDING`,
-        paymentProof: 'https://example.com/payment-proof.jpg',
         notes: 'Waiting for admin approval',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 2 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 2 * 60 * 1000),
       },
     });
   }
@@ -390,19 +414,11 @@ async function main() {
         userId: reseller.id,
         type: 'RESELLER_BULK_PURCHASE',
         status: 'COMPLETED',
-        requestedAmount: 5000,
-        approvedAmount: 5000,
-        fromAmount: 500,
-        fromCurrency: 'USD',
         totalCost: 500,
-        exchangeRate: 100,
-        processingFee: 12.5,
-        paymentMethod: 'Wire Transfer',
-        paymentReference: `BULK${Date.now()}${i}`,
         notes: 'Bulk purchase for reseller operations',
         adminNotes: 'Verified reseller credentials and approved',
         createdAt: new Date(Date.now() - (i + 1) * 48 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - (i + 1) * 48 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - (i + 1) * 48 * 60 * 1000 + 2 * 60 * 1000),
       },
     });
   }
@@ -414,15 +430,7 @@ async function main() {
         userId: resellers[0].id,
         type: 'RESELLER_BULK_PURCHASE',
         status: 'PENDING',
-        requestedAmount: 10000,
-        fromAmount: 1000,
-        fromCurrency: 'USD',
         totalCost: 1000,
-        exchangeRate: 100,
-        processingFee: 25,
-        paymentMethod: 'Wire Transfer',
-        paymentReference: `BULK${Date.now()}PENDING`,
-        paymentProof: 'https://example.com/bulk-payment-proof.jpg',
         notes: 'Large bulk purchase request',
         createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
         updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
@@ -437,17 +445,11 @@ async function main() {
         userId: retailers[0].id,
         type: 'RETAILER_XCOIN_PURCHASE',
         status: 'FAILED',
-        fromAmount: 30,
-        fromCurrency: 'USD',
         totalCost: 30,
-        exchangeRate: 100,
-        processingFee: 0.75,
-        paymentMethod: 'Credit Card',
-        paymentReference: `FAILED${Date.now()}1`,
         notes: 'Payment failed due to insufficient funds',
         adminNotes: 'Credit card declined by bank',
-        createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 8 * 60 * 60 * 1000 + 5 * 60 * 1000),
+        createdAt: new Date(Date.now() - 8 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 8 * 60 * 1000 + 5 * 60 * 1000),
       },
     });
   }
@@ -458,18 +460,11 @@ async function main() {
         userId: resellers[0].id,
         type: 'RESELLER_BULK_PURCHASE',
         status: 'CANCELLED',
-        requestedAmount: 15000,
-        fromAmount: 1500,
-        fromCurrency: 'USD',
         totalCost: 1500,
-        exchangeRate: 100,
-        processingFee: 37.5,
-        paymentMethod: 'Wire Transfer',
-        paymentReference: `REJECTED${Date.now()}1`,
         notes: 'Large bulk purchase request',
         adminNotes: 'Rejected due to incomplete KYC documentation',
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 20 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 24 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 20 * 60 * 1000),
       },
     });
   }
@@ -481,12 +476,7 @@ async function main() {
         userId: retailers[1].id,
         type: 'RETAILER_XCOIN_PURCHASE',
         status: 'COMPLETED',
-        fromAmount: 80,
-        fromCurrency: 'USD',
-        exchangeRate: 100,
-        processingFee: 2,
-        paymentMethod: 'Bank Transfer',
-        paymentReference: `TODAY${Date.now()}1`,
+        totalCost: 80,
         notes: 'Quick XCoin purchase',
         adminNotes: 'Auto-approved',
         createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
@@ -547,7 +537,7 @@ async function main() {
           type: 'SPEND',
           amount: -150,
           description: 'Purchased Free Fire diamonds',
-          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - 4 * 60 * 1000),
         },
         // Older transactions
         {
@@ -570,7 +560,7 @@ async function main() {
           type: 'SPEND',
           amount: -1000,
           description: 'Reseller distribution to retailers',
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - 24 * 60 * 1000),
         },
         // Refund transaction
         {
@@ -587,7 +577,7 @@ async function main() {
   }
 
   // Create sample orders for package purchases
-  const packageTransactions = await prisma.transaction.findMany({
+ const packageTransactions = await prisma.transaction.findMany({
     where: { type: 'RETAILER_PACKAGE_PURCHASE' },
     take: 3,
   });
@@ -598,7 +588,7 @@ async function main() {
     const order = await prisma.order.create({
       data: {
         packageKeywords: 'Mobile Legends',
-        totalAmount: transaction.approvedAmount || 0,
+        totalAmount: transaction.totalCost || 0,
         transactionId: transaction.id,
         gameUserId: transaction.gameUserId || `user${i + 1}`,
         serverId: transaction.serverId || 'SEA-001',
@@ -614,12 +604,12 @@ async function main() {
       data: {
         orderId: order.id,
         vendorName: 'Razor Gold',
-        vendorPackageCode: 'ML_1000',
+        vendorPackageCode: 'ML_100',
         createdAt: transaction.createdAt,
         updatedAt: transaction.updatedAt,
       },
     });
-  }
+ }
 
   console.log('📦 Created orders and vendor calls');
 
