@@ -579,7 +579,7 @@ support@gamingplatform.com
                     balance: amount
                 }
             });
-            return result.balance;
+            return parseFloat(result.balance.toString());
         }
         catch (error) {
             console.error('Error updating user Smile coin balance:', error);
@@ -598,7 +598,7 @@ support@gamingplatform.com
                 throw new common_1.NotFoundException('User not found');
             }
             return {
-                balance: user.balance || 0,
+                balance: parseFloat(user.balance?.toString() || '0'),
                 smileCoinBalances: user.smileCoinBalances || []
             };
         }

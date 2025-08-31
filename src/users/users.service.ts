@@ -703,7 +703,7 @@ support@gamingplatform.com
         }
       });
 
-      return result.balance;
+      return parseFloat(result.balance.toString());
     } catch (error) {
       console.error('Error updating user Smile coin balance:', error);
       throw new BadRequestException('Failed to update user Smile coin balance');
@@ -724,7 +724,7 @@ support@gamingplatform.com
       }
 
       return {
-        balance: user.balance || 0,
+        balance: parseFloat(user.balance?.toString() || '0'),
         smileCoinBalances: user.smileCoinBalances || []
       };
     } catch (error) {

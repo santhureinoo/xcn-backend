@@ -39,8 +39,8 @@ export declare class MarkupsController {
             displayValue: string;
             id: string;
             name: string;
-            percentageAdd: number | null;
-            flatAmountAdd: number | null;
+            percentageAdd: import("@prisma/client/runtime/library").Decimal | null;
+            flatAmountAdd: import("@prisma/client/runtime/library").Decimal | null;
         }[];
     }>;
     findOne(id: string): Promise<{

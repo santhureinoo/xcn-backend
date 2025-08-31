@@ -327,10 +327,10 @@ let MarkupsService = class MarkupsService {
                 }
                 let finalPrice = basePrice;
                 if (markup.percentageAdd) {
-                    finalPrice = basePrice + (basePrice * markup.percentageAdd / 100);
+                    finalPrice = basePrice + (basePrice * parseFloat(markup.percentageAdd.toString()) / 100);
                 }
                 else if (markup.flatAmountAdd) {
-                    finalPrice = basePrice + markup.flatAmountAdd;
+                    finalPrice = basePrice + parseFloat(markup.flatAmountAdd.toString());
                 }
                 resolve(Math.round(finalPrice * 100) / 100);
             }

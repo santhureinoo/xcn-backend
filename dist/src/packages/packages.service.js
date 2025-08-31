@@ -89,9 +89,13 @@ let PackagesService = class PackagesService {
             }
             const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
                 where: {
-                    vendorName: createPackageDto.vendor
+                    vendorName: createPackageDto.vendor,
+                    isActive: true
                 }
             });
+            if (!vendorExchangeRate) {
+                throw new common_1.BadRequestException(`Vendor '${createPackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+            }
             const packageData = await this.prisma.package.create({
                 data: {
                     name: createPackageDto.name,
@@ -109,7 +113,7 @@ let PackagesService = class PackagesService {
                     vendor: createPackageDto.vendor,
                     vendorPackageCode: createPackageDto.vendorPackageCodes.join(','),
                     vendorPrice: Number(createPackageDto.vendorPrice) || 0,
-                    vendorCurrency: vendorExchangeRate?.vendorCurrency || '',
+                    vendorCurrency: vendorExchangeRate.vendorCurrency || '',
                     currency: createPackageDto.currency || 'USD',
                     packageStatus: 1,
                     resellKeyword: createPackageDto.resellKeyword || '',
@@ -280,6 +284,20 @@ let PackagesService = class PackagesService {
             if (!existingPackage || existingPackage.length === 0) {
                 throw new common_1.NotFoundException(`Package with ID ${id} not found`);
             }
+            if (updatePackageDto.vendor !== undefined) {
+                const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+                    where: {
+                        vendorName: updatePackageDto.vendor,
+                        isActive: true
+                    }
+                });
+                if (!vendorExchangeRate) {
+                    throw new common_1.BadRequestException(`Vendor '${updatePackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+                }
+                if (updatePackageDto.vendorCurrency === undefined) {
+                    updatePackageDto.vendorCurrency = vendorExchangeRate.vendorCurrency;
+                }
+            }
             const updateData = {};
             if (updatePackageDto.name !== undefined)
                 updateData.name = updatePackageDto.name;
@@ -312,7 +330,9 @@ let PackagesService = class PackagesService {
             if (updatePackageDto.currency !== undefined)
                 updateData.currency = updatePackageDto.currency;
             if (updatePackageDto.status !== undefined)
-                updateData.packageStatus = updatePackageDto.status;
+                updateData.status = updatePackageDto.status;
+            if (updatePackageDto.packageStatus !== undefined)
+                updateData.packageStatus = updatePackageDto.packageStatus;
             if (updatePackageDto.stock !== undefined)
                 updateData.stock = Number(updatePackageDto.stock);
             if (updatePackageDto.baseVendorCost !== undefined)

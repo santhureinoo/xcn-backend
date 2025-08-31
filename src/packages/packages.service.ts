@@ -391,7 +391,8 @@ export class PackagesService {
       if (updatePackageDto.vendor !== undefined) updateData.vendor = updatePackageDto.vendor;
       if (updatePackageDto.vendorPrice !== undefined) updateData.vendorPrice = Number(updatePackageDto.vendorPrice);
       if (updatePackageDto.currency !== undefined) updateData.currency = updatePackageDto.currency;
-  if (updatePackageDto.status !== undefined) updateData.packageStatus = updatePackageDto.status;
+      if (updatePackageDto.status !== undefined) updateData.status = updatePackageDto.status;
+      if (updatePackageDto.packageStatus !== undefined) updateData.packageStatus = updatePackageDto.packageStatus;
       if (updatePackageDto.stock !== undefined) updateData.stock = Number(updatePackageDto.stock);
       if (updatePackageDto.baseVendorCost !== undefined) updateData.baseVendorCost = Number(updatePackageDto.baseVendorCost);
       if (updatePackageDto.isPriceLocked !== undefined) updateData.isPriceLocked = updatePackageDto.isPriceLocked; // Add this line

@@ -20,11 +20,11 @@ export class VendorRatesService {
 
     // Calculate trend
     const trend = currentRate ? 
-      (newXCoinRate > currentRate.xCoinRate ? 'UP' : 
-       newXCoinRate < currentRate.xCoinRate ? 'DOWN' : 'STABLE') : 'STABLE';
+      (newXCoinRate > parseFloat(currentRate.xCoinRate.toString()) ? 'UP' :
+       newXCoinRate < parseFloat(currentRate.xCoinRate.toString()) ? 'DOWN' : 'STABLE') : 'STABLE';
 
     const change24h = currentRate ? 
-      ((newXCoinRate - currentRate.xCoinRate) / currentRate.xCoinRate) * 100 : 0;
+      ((newXCoinRate - parseFloat(currentRate.xCoinRate.toString())) / parseFloat(currentRate.xCoinRate.toString())) * 100 : 0;
 
     let updatedRate;
 
@@ -88,44 +88,44 @@ export class VendorRatesService {
       // === CALCULATE NEW PRICE ===
       // Calculate what the price should have been with old rate (without extra coins)
       const expectedOldPrice = this.calculatePackagePrice(
-        pkg.baseVendorCost,
+        parseFloat(pkg.baseVendorCost.toString()),
         oldRate,
-        pkg.markupPercent,
-        pkg.roundToNearest,
+        parseFloat(pkg.markupPercent.toString()),
+        parseFloat(pkg.roundToNearest.toString()),
         0 // No extra coins for base calculation
       );
 
       // Calculate the extra coins that user added to price
-      const extraCoinPrice = pkg.price - expectedOldPrice;
+      const extraCoinPrice = parseFloat(pkg.price.toString()) - expectedOldPrice;
       console.log('Expected old price (without extra):', expectedOldPrice);
       console.log('Extra coins added to price:', extraCoinPrice);
 
       // Calculate new price with new rate
       const newPrice = this.calculatePackagePrice(
-        pkg.baseVendorCost,
-        vendorRate.xCoinRate,
-        pkg.markupPercent,
-        pkg.roundToNearest,
+        parseFloat(pkg.baseVendorCost.toString()),
+        parseFloat(vendorRate.xCoinRate.toString()),
+        parseFloat(pkg.markupPercent.toString()),
+        parseFloat(pkg.roundToNearest.toString()),
         Math.max(0, extraCoinPrice) // Only add positive extra coins
       );
 
       // === CALCULATE NEW VENDOR PRICE ===
       // Calculate what the vendor price should have been with old rate (without extra coins)
       const expectedOldVendorPrice = this.calculateVendorPrice(
-        pkg.baseVendorCost,
+        parseFloat(pkg.baseVendorCost.toString()),
         oldRate,
         0 // No extra coins for base calculation
       );
 
       // Calculate the extra coins that user added to vendor price
-      const extraCoinVendorPrice = pkg.vendorPrice - expectedOldVendorPrice;
+      const extraCoinVendorPrice = parseFloat(pkg.vendorPrice.toString()) - expectedOldVendorPrice;
       console.log('Expected old vendor price (without extra):', expectedOldVendorPrice);
       console.log('Extra coins added to vendor price:', extraCoinVendorPrice);
 
       // Calculate new vendor price with new rate
       const newVendorPrice = this.calculateVendorPrice(
-        pkg.baseVendorCost,
-        vendorRate.xCoinRate,
+        parseFloat(pkg.baseVendorCost.toString()),
+        parseFloat(vendorRate.xCoinRate.toString()),
         Math.max(0, extraCoinVendorPrice) // Only add positive extra coins
       );
 

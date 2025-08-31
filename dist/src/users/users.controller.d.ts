@@ -11,8 +11,8 @@ export declare class UsersController {
             createdAt: Date;
             lastLoginAt: Date | null;
             isVerified: boolean;
-            commission?: number | null | undefined;
-            totalEarnings?: number | null | undefined;
+            commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            totalEarnings?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             referralCode?: string | null | undefined;
             referredBy?: string | null | undefined;
             downlineCount?: number | null | undefined;
@@ -22,16 +22,16 @@ export declare class UsersController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
                 region: string;
             }[];
-            totalSpent: number;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;
@@ -44,8 +44,8 @@ export declare class UsersController {
             createdAt: Date;
             lastLoginAt: Date | null;
             isVerified: boolean;
-            commission?: number | null | undefined;
-            totalEarnings?: number | null | undefined;
+            commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            totalEarnings?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             referralCode?: string | null | undefined;
             referredBy?: string | null | undefined;
             downlineCount?: number | null | undefined;
@@ -55,16 +55,16 @@ export declare class UsersController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
                 region: string;
             }[];
-            totalSpent: number;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;
@@ -85,16 +85,16 @@ export declare class UsersController {
             totalRetailers: number;
             totalResellers: number;
             activeUsers: number;
-            totalBalance: number;
-            totalSpent: number;
+            totalBalance: number | import("@prisma/client/runtime/library").Decimal;
+            totalSpent: number | import("@prisma/client/runtime/library").Decimal;
         };
     }>;
     getBalance(req: any): Promise<{
         success: boolean;
-        balance: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
         smileCoinBalances: {
             id: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
@@ -104,7 +104,7 @@ export declare class UsersController {
     }>;
     getSmileCoinBalanceByRegion(req: any, region: string): Promise<{
         success: boolean;
-        balance: number;
+        balance: number | import("@prisma/client/runtime/library").Decimal;
         region: string;
         currency: string;
     }>;
@@ -114,8 +114,8 @@ export declare class UsersController {
             createdAt: Date;
             lastLoginAt: Date | null;
             isVerified: boolean;
-            commission?: number | null | undefined;
-            totalEarnings?: number | null | undefined;
+            commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            totalEarnings?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             referralCode?: string | null | undefined;
             referredBy?: string | null | undefined;
             downlineCount?: number | null | undefined;
@@ -125,16 +125,16 @@ export declare class UsersController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
                 region: string;
             }[];
-            totalSpent: number;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;
@@ -148,8 +148,8 @@ export declare class UsersController {
             createdAt: Date;
             lastLoginAt: Date | null;
             isVerified: boolean;
-            commission?: number | null | undefined;
-            totalEarnings?: number | null | undefined;
+            commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            totalEarnings?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             referralCode?: string | null | undefined;
             referredBy?: string | null | undefined;
             downlineCount?: number | null | undefined;
@@ -159,16 +159,16 @@ export declare class UsersController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
                 region: string;
             }[];
-            totalSpent: number;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;
@@ -194,13 +194,13 @@ export declare class UsersController {
         success: boolean;
         user: {
             id: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
         };
         message: string;
         transaction: {
             amount: number;
-            previousBalance: number;
-            newBalance: number;
+            previousBalance: import("@prisma/client/runtime/library").Decimal;
+            newBalance: import("@prisma/client/runtime/library").Decimal;
             rechargedBy: any;
             timestamp: string;
             notes: string | null;
@@ -217,7 +217,7 @@ export declare class UsersController {
             region: string;
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
@@ -246,16 +246,16 @@ export declare class UsersController {
     }): Promise<{
         success: boolean;
         data: {
-            Commission?: number | null | undefined;
-            'Total Earnings'?: number | null | undefined;
+            Commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            'Total Earnings'?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             'Referral Code'?: string | null | undefined;
             'Downline Count'?: number | null | undefined;
             Name: string;
             Email: string;
             Role: import(".prisma/client").$Enums.UserRole;
             Status: import(".prisma/client").$Enums.UserStatus;
-            Balance: number;
-            'Total Spent': number;
+            Balance: import("@prisma/client/runtime/library").Decimal;
+            'Total Spent': import("@prisma/client/runtime/library").Decimal;
             Orders: number;
             Created: string;
             Phone: string;

@@ -268,7 +268,7 @@ export class TransactionsService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.balance < totalCost) {
+      if (parseFloat(user.balance.toString()) < totalCost) {
         throw new BadRequestException(`Insufficient balance. Required: ${totalCost}, Available: ${user.balance}`);
       }
 
@@ -634,7 +634,7 @@ export class TransactionsService {
             const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
             
             if (selectedRegionalBalance) {
-              if (selectedRegionalBalance.balance < packagePrice) {
+              if (parseFloat(selectedRegionalBalance.balance.toString()) < packagePrice) {
                 throw new BadRequestException(`insufficient Smile Coin`);
               }
             } else {
@@ -645,7 +645,7 @@ export class TransactionsService {
       }
 
       if (totalPrice > 0) {
-        if (user.balance < totalPrice) {
+        if (parseFloat(user.balance.toString()) < totalPrice) {
           throw new BadRequestException(`Insufficient xCoin balance. Required: ${totalPrice}, Available: ${user.balance}`);
         }
       }
@@ -682,8 +682,8 @@ export class TransactionsService {
           quantity: 1,
           unitPrice: packagePrice,
           totalPrice: packagePrice,
-          basePrice: pkg.price,
-          markupApplied: isSpecial ? 0 : (pkg.price - pkg.baseVendorCost),
+          basePrice: parseFloat(pkg.price.toString()),
+          markupApplied: isSpecial ? 0 : (parseFloat(pkg.price.toString()) - parseFloat(pkg.baseVendorCost.toString())),
           markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
         },
         });
@@ -834,7 +834,7 @@ export class TransactionsService {
           vendorRate: packageData.vendorRate?.[0]?.xCoinRate,
           timestamp: new Date().toISOString()
         },
-        totalCost: packageData.lockedPrice * quantity,
+        totalCost: parseFloat(packageData.lockedPrice.toString()) * quantity,
         status: 'PENDING'
       }
     });
@@ -859,7 +859,7 @@ export class TransactionsService {
       // Find the smile coin balance for the specified region
       const smileCoinBalance = user.smileCoinBalances?.find(balance => balance.region === region);
 
-      return smileCoinBalance ? smileCoinBalance.balance : 0;
+      return smileCoinBalance ? parseFloat(smileCoinBalance.balance.toString()) : 0;
     } catch (error) {
       console.error('Error fetching smile coin balance for region:', error);
       return 0;

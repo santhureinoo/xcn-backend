@@ -22,10 +22,10 @@ let VendorRatesService = class VendorRatesService {
             where: { vendorName: vendorName }
         });
         const trend = currentRate ?
-            (newXCoinRate > currentRate.xCoinRate ? 'UP' :
-                newXCoinRate < currentRate.xCoinRate ? 'DOWN' : 'STABLE') : 'STABLE';
+            (newXCoinRate > parseFloat(currentRate.xCoinRate.toString()) ? 'UP' :
+                newXCoinRate < parseFloat(currentRate.xCoinRate.toString()) ? 'DOWN' : 'STABLE') : 'STABLE';
         const change24h = currentRate ?
-            ((newXCoinRate - currentRate.xCoinRate) / currentRate.xCoinRate) * 100 : 0;
+            ((newXCoinRate - parseFloat(currentRate.xCoinRate.toString())) / parseFloat(currentRate.xCoinRate.toString())) * 100 : 0;
         let updatedRate;
         const oldRate = await this.prisma.vendorExchangeRate.findUnique({
             where: { vendorName: vendorName }
@@ -74,16 +74,16 @@ let VendorRatesService = class VendorRatesService {
             console.log('Base vendor cost:', pkg.baseVendorCost);
             console.log('Current package price:', pkg.price);
             console.log('Current vendor price:', pkg.vendorPrice);
-            const expectedOldPrice = this.calculatePackagePrice(pkg.baseVendorCost, oldRate, pkg.markupPercent, pkg.roundToNearest, 0);
-            const extraCoinPrice = pkg.price - expectedOldPrice;
+            const expectedOldPrice = this.calculatePackagePrice(parseFloat(pkg.baseVendorCost.toString()), oldRate, parseFloat(pkg.markupPercent.toString()), parseFloat(pkg.roundToNearest.toString()), 0);
+            const extraCoinPrice = parseFloat(pkg.price.toString()) - expectedOldPrice;
             console.log('Expected old price (without extra):', expectedOldPrice);
             console.log('Extra coins added to price:', extraCoinPrice);
-            const newPrice = this.calculatePackagePrice(pkg.baseVendorCost, vendorRate.xCoinRate, pkg.markupPercent, pkg.roundToNearest, Math.max(0, extraCoinPrice));
-            const expectedOldVendorPrice = this.calculateVendorPrice(pkg.baseVendorCost, oldRate, 0);
-            const extraCoinVendorPrice = pkg.vendorPrice - expectedOldVendorPrice;
+            const newPrice = this.calculatePackagePrice(parseFloat(pkg.baseVendorCost.toString()), parseFloat(vendorRate.xCoinRate.toString()), parseFloat(pkg.markupPercent.toString()), parseFloat(pkg.roundToNearest.toString()), Math.max(0, extraCoinPrice));
+            const expectedOldVendorPrice = this.calculateVendorPrice(parseFloat(pkg.baseVendorCost.toString()), oldRate, 0);
+            const extraCoinVendorPrice = parseFloat(pkg.vendorPrice.toString()) - expectedOldVendorPrice;
             console.log('Expected old vendor price (without extra):', expectedOldVendorPrice);
             console.log('Extra coins added to vendor price:', extraCoinVendorPrice);
-            const newVendorPrice = this.calculateVendorPrice(pkg.baseVendorCost, vendorRate.xCoinRate, Math.max(0, extraCoinVendorPrice));
+            const newVendorPrice = this.calculateVendorPrice(parseFloat(pkg.baseVendorCost.toString()), parseFloat(vendorRate.xCoinRate.toString()), Math.max(0, extraCoinVendorPrice));
             console.log('New calculated price:', newPrice);
             console.log('New calculated vendor price:', newVendorPrice);
             console.log('---');

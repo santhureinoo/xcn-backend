@@ -67,7 +67,7 @@ let CurrencyService = class CurrencyService {
             return {
                 totalXCoinsInCirculation: totalXCoinsInCirculation._sum.balance || 0,
                 totalXCoinsPurchased24h: totalXCoinsPurchased24h._sum.amount || 0,
-                totalXCoinsSpent24h: Math.abs(totalXCoinsSpent24h._sum.amount || 0),
+                totalXCoinsSpent24h: Math.abs(parseFloat(totalXCoinsSpent24h._sum.amount?.toString() || '0')),
                 totalRevenue24h: totalRevenue24h._sum.totalCost || 0,
                 averageExchangeRate: averageExchangeRate?.rate || 100,
                 activeUsers24h
@@ -120,7 +120,7 @@ let CurrencyService = class CurrencyService {
                 throw new common_1.NotFoundException(`Exchange rate from ${fromCurrency} to ${toCurrency} not found`);
             }
             const oldRate = existingRate.rate;
-            const change24h = ((newRate - oldRate) / oldRate) * 100;
+            const change24h = ((newRate - parseFloat(oldRate.toString())) / parseFloat(oldRate.toString())) * 100;
             let trend = 'STABLE';
             if (change24h > 0.1)
                 trend = 'UP';

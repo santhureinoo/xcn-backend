@@ -8,8 +8,8 @@ export declare class AuthController {
         user: {
             createdAt: Date;
             lastLoginAt: Date | null;
-            commission?: number | null | undefined;
-            totalEarnings?: number | null | undefined;
+            commission?: import("@prisma/client/runtime/library").Decimal | null | undefined;
+            totalEarnings?: import("@prisma/client/runtime/library").Decimal | null | undefined;
             referralCode?: string | null | undefined;
             referredBy?: string | null | undefined;
             downlineCount?: number | null | undefined;
@@ -19,8 +19,8 @@ export declare class AuthController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
-            totalSpent: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;
@@ -37,8 +37,8 @@ export declare class AuthController {
             lastName: string;
             role: string;
             status: string;
-            balance: number;
-            totalSpent: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
             phone: string | null;
             address: string | null;

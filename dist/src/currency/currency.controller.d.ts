@@ -5,11 +5,11 @@ export declare class CurrencyController {
     getCurrencyStats(): Promise<{
         success: boolean;
         stats: {
-            totalXCoinsInCirculation: number;
-            totalXCoinsPurchased24h: number;
+            totalXCoinsInCirculation: number | import("@prisma/client/runtime/library").Decimal;
+            totalXCoinsPurchased24h: number | import("@prisma/client/runtime/library").Decimal;
             totalXCoinsSpent24h: number;
-            totalRevenue24h: number;
-            averageExchangeRate: number;
+            totalRevenue24h: number | import("@prisma/client/runtime/library").Decimal;
+            averageExchangeRate: number | import("@prisma/client/runtime/library").Decimal;
             activeUsers24h: number;
         };
         message?: undefined;
@@ -24,9 +24,9 @@ export declare class CurrencyController {
             id: string;
             fromCurrency: string;
             toCurrency: string;
-            rate: number;
+            rate: import("@prisma/client/runtime/library").Decimal;
             trend: string;
-            change24h: number;
+            change24h: import("@prisma/client/runtime/library").Decimal;
             lastUpdated: string;
             fromCurrencyName: string;
             toCurrencyName: string;
@@ -45,9 +45,9 @@ export declare class CurrencyController {
             id: string;
             fromCurrency: string;
             toCurrency: string;
-            rate: number;
+            rate: import("@prisma/client/runtime/library").Decimal;
             trend: string;
-            change24h: number;
+            change24h: import("@prisma/client/runtime/library").Decimal;
             lastUpdated: string;
             fromCurrencyName: string;
             toCurrencyName: string;

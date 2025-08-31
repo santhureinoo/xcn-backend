@@ -8,7 +8,7 @@ export declare class UsersService {
     create(createUserDto: CreateUserDto): Promise<{
         smileCoinBalances: {
             id: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
@@ -26,11 +26,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;
@@ -60,11 +60,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;
@@ -75,7 +75,7 @@ export declare class UsersService {
     findById(id: string): Promise<({
         smileCoinBalances: {
             id: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
@@ -98,11 +98,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;
@@ -127,11 +127,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;
@@ -156,11 +156,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;
@@ -188,7 +188,7 @@ export declare class UsersService {
         users: ({
             smileCoinBalances: {
                 id: string;
-                balance: number;
+                balance: import("@prisma/client/runtime/library").Decimal;
                 createdAt: Date;
                 updatedAt: Date;
                 userId: string;
@@ -211,11 +211,11 @@ export declare class UsersService {
             avatar: string | null;
             role: import(".prisma/client").$Enums.UserRole;
             status: import(".prisma/client").$Enums.UserStatus;
-            balance: number;
-            totalSpent: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
+            totalSpent: import("@prisma/client/runtime/library").Decimal;
             totalOrders: number;
-            commission: number | null;
-            totalEarnings: number | null;
+            commission: import("@prisma/client/runtime/library").Decimal | null;
+            totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
             referralCode: string | null;
             referredBy: string | null;
             downlineCount: number | null;
@@ -231,13 +231,13 @@ export declare class UsersService {
         totalRetailers: number;
         totalResellers: number;
         activeUsers: number;
-        totalBalance: number;
-        totalSpent: number;
+        totalBalance: number | import("@prisma/client/runtime/library").Decimal;
+        totalSpent: number | import("@prisma/client/runtime/library").Decimal;
     }>;
     update(id: string, updateUserDto: UpdateUserDto): Promise<{
         smileCoinBalances: {
             id: string;
-            balance: number;
+            balance: import("@prisma/client/runtime/library").Decimal;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
@@ -260,11 +260,11 @@ export declare class UsersService {
         avatar: string | null;
         role: import(".prisma/client").$Enums.UserRole;
         status: import(".prisma/client").$Enums.UserStatus;
-        balance: number;
-        totalSpent: number;
+        balance: import("@prisma/client/runtime/library").Decimal;
+        totalSpent: import("@prisma/client/runtime/library").Decimal;
         totalOrders: number;
-        commission: number | null;
-        totalEarnings: number | null;
+        commission: import("@prisma/client/runtime/library").Decimal | null;
+        totalEarnings: import("@prisma/client/runtime/library").Decimal | null;
         referralCode: string | null;
         referredBy: string | null;
         downlineCount: number | null;

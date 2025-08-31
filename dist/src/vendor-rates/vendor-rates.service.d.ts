@@ -8,23 +8,23 @@ export declare class VendorRatesService {
     private calculateVendorPrice;
     getVendorRates(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         vendorName: string;
         vendorCurrency: string;
-        xCoinRate: number;
+        xCoinRate: import("@prisma/client/runtime/library").Decimal;
         trend: import(".prisma/client").$Enums.RateTrend;
-        change24h: number;
+        change24h: import("@prisma/client/runtime/library").Decimal;
         isActive: boolean;
-        previousRate: number | null;
+        previousRate: import("@prisma/client/runtime/library").Decimal | null;
         rateHistory: import("@prisma/client/runtime/library").JsonValue | null;
         updatedBy: string | null;
         updateReason: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }[]>;
     getVendorRateHistory(vendorName: string, vendorCurrency: string): Promise<{
-        updatedAt: Date;
-        xCoinRate: number;
-        previousRate: number | null;
+        xCoinRate: import("@prisma/client/runtime/library").Decimal;
+        previousRate: import("@prisma/client/runtime/library").Decimal | null;
         rateHistory: import("@prisma/client/runtime/library").JsonValue;
+        updatedAt: Date;
     } | null>;
 }
