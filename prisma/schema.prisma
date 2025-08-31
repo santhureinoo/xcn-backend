@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -31,16 +31,10 @@ model RegionGameVendor {
   @@unique([region, gameName, vendorName]) // Prevent duplicates
   
   // Indexes for better query performance
-  @@index([region])
-  @@index([gameName])
-  @@index([vendorName])
   @@index([isActive])
   @@index([createdAt])
   @@index([updatedAt])
   // Composite indexes for common query patterns
-  @@index([region, gameName])
-  @@index([region, vendorName])
-  @@index([gameName, vendorName])
   @@index([region, isActive])
   @@index([gameName, isActive])
   @@index([vendorName, isActive])
