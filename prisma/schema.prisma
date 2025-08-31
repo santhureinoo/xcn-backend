@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -30,6 +30,22 @@ model RegionGameVendor {
   @@index([gameName, vendorName])
   @@unique([region, gameName, vendorName]) // Prevent duplicates
   
+  // Indexes for better query performance
+  @@index([region])
+  @@index([gameName])
+  @@index([vendorName])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([updatedAt])
+  // Composite indexes for common query patterns
+  @@index([region, gameName])
+  @@index([region, vendorName])
+  @@index([gameName, vendorName])
+  @@index([region, isActive])
+  @@index([gameName, isActive])
+  @@index([vendorName, isActive])
+  @@index([isActive, createdAt])
+  
   @@map("region_game_vendors")
 }
 
@@ -40,8 +56,8 @@ model Markup {
   description     String?   // Optional description
   
   // Either percentage OR flat amount markup, not both
-  percentageAdd   Float?    // e.g., 10.0 for 10% markup (500 -> 550)
-  flatAmountAdd   Float?    // e.g., 50.0 for 50 xCoins markup (500 -> 550)
+  percentageAdd   Decimal?    // e.g., 10.0 for 10% markup (500 -> 550)
+  flatAmountAdd   Decimal?    // e.g., 50.0 for 50 xCoins markup (500 -> 550)
   
   // Markup settings
   isActive        Boolean   @default(true)
@@ -57,6 +73,21 @@ model Markup {
   
   // Relations
   packages        Package[] // One markup can be applied to many packages
+  
+  // Indexes for better query performance
+  @@index([name])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdAt])
+  @@index([updatedAt])
+  // Composite indexes for common query patterns
+  @@index([name, isActive])
+  @@index([isActive, startDate])
+  @@index([isActive, endDate])
+  @@index([startDate, endDate])
+  @@index([isActive, createdAt])
+  @@index([name, createdAt])
   
   @@map("markups")
 }
@@ -84,13 +115,13 @@ model User {
   status              UserStatus @default(ACTIVE)
   
   // Financial fields
-  balance             Float     @default(0)
-  totalSpent          Float     @default(0)
+  balance             Decimal     @default(0)
+  totalSpent          Decimal     @default(0)
   totalOrders         Int       @default(0)
   
   // Reseller specific fields
-  commission          Float?
-  totalEarnings       Float?
+  commission          Decimal?
+  totalEarnings       Decimal?
   referralCode        String?   @unique
   referredBy          String?
   downlineCount       Int?      @default(0)
@@ -105,6 +136,15 @@ model User {
   walletTransactions  XCoinTransaction[]
   smileCoinBalances   SmileCoinBalance[]  // New relation
   
+  // Indexes for better query performance
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([role, status])
+  @@index([status, createdAt])
+  @@index([role, createdAt])
+  
   @@map("users")
 }
 
@@ -112,13 +152,13 @@ model VendorExchangeRate {
   id              String      @id @default(uuid())
   vendorName      String      // "Smile", "Razor Gold", etc.
   vendorCurrency  String      // "SMILE_COIN", "RAZOR_GOLD_COIN", etc.
-  xCoinRate       Float       // How many xCoins needed for 1 vendor coin
+  xCoinRate       Decimal       // How many xCoins needed for 1 vendor coin
   trend           RateTrend   @default(STABLE)
-  change24h       Float       @default(0)
+  change24h       Decimal       @default(0)
   isActive        Boolean     @default(true)
   
   // Rate history for rollback if needed
-  previousRate    Float?
+  previousRate    Decimal?
   rateHistory     Json?       // Store last 10 rate changes
   
   // Admin tracking
@@ -131,6 +171,20 @@ model VendorExchangeRate {
   updatedAt       DateTime    @updatedAt
   
   @@unique([vendorName])
+  
+  // Indexes for better query performance
+  @@index([vendorName])
+  @@index([vendorCurrency])
+  @@index([xCoinRate])
+  @@index([trend])
+  @@index([isActive])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([vendorName, vendorCurrency])
+  @@index([vendorCurrency, isActive])
+  @@index([trend, isActive])
+  @@index([isActive, createdAt])
+  
   @@map("vendor_exchange_rates")
 }
 
@@ -138,8 +192,8 @@ model Package {
   id                  String      @id @default(uuid())
   name                String
   description         String?
-  price               Float       // Platform price in xCoin (final calculated price)
-  basePrice           Float?      // NEW: Base price before markup (calculated in frontend)
+  price               Decimal       // Platform price in xCoin (final calculated price)
+  basePrice           Decimal?      // NEW: Base price before markup (calculated in frontend)
   imageUrl            String?
   type                PackageType
   gameId              String
@@ -150,18 +204,18 @@ model Package {
   packageStatus       Int         @default(1) // 1: Active, 2: Disabled, 3: Deleted
 
   // Enhanced pricing fields
-  baseVendorCost      Float      @default(0) // Cost in vendor coins (e.g., 1 SMILE_COIN)
+  baseVendorCost      Decimal      @default(0) // Cost in vendor coins (e.g., 1 SMILE_COIN)
   vendorCurrency      String     @default("SMILE_COIN") // "SMILE_COIN", "RAZOR_GOLD_COIN"
-  markupPercent       Float      @default(15) // Platform markup %
+  markupPercent       Decimal      @default(15) // Platform markup %
 
   // Price locking
-  lockedPrice         Float?      // Locked xCoin price (calculated)
+  lockedPrice         Decimal?      // Locked xCoin price (calculated)
   lastPriceUpdate     DateTime?   // When price was last calculated
   priceVersion        Int         @default(1) // Version for price changes
   isPriceLocked       Boolean     @default(false) // Flag to prevent auto price updates
   
   // Rounding preferences
-  roundToNearest      Float       @default(1) // Round to nearest 1, 5, 10, etc.
+  roundToNearest      Decimal       @default(1) // Round to nearest 1, 5, 10, etc.
 
   // NEW: Markup relation
   markupId            String?     // Foreign key to Markup table
@@ -178,7 +232,7 @@ model Package {
   gameName            String
   vendor              String
   vendorPackageCode   String
-  vendorPrice         Float       // Original vendor price
+  vendorPrice         Decimal       // Original vendor price
   currency            String      // R$, USD, etc
   resellKeyword       String?
   status              PackageStatus @default(ACTIVE)
@@ -189,6 +243,26 @@ model Package {
   
   // Relations - Junction table for many-to-many relationship between Transaction and Package
   transactionPackages TransactionPackage[]
+  
+  // Indexes for better query performance
+  @@index([name])
+  @@index([type])
+  @@index([gameId])
+  @@index([featured])
+  @@index([packageStatus])
+  @@index([region])
+  @@index([gameName])
+  @@index([vendor])
+  @@index([vendorPackageCode])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([type, packageStatus])
+  @@index([packageStatus, createdAt])
+  @@index([type, createdAt])
+  @@index([region, gameName])
+  @@index([region, vendor])
+  @@index([gameName, vendor])
+  @@index([featured, packageStatus])
   
   @@map("packages")
 }
@@ -231,6 +305,17 @@ model Currency {
   exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
   exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
   
+  // Indexes for better query performance
+  @@index([code])
+  @@index([name])
+  @@index([symbol])
+  @@index([isActive])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([code, isActive])
+  @@index([isActive, createdAt])
+  @@index([name, isActive])
+  
   @@map("currencies")
 }
 
@@ -238,9 +323,9 @@ model ExchangeRate {
   id            String   @id @default(uuid())
   fromCurrency  String
   toCurrency    String
-  rate          Float
+  rate          Decimal
   trend         RateTrend @default(STABLE)
-  change24h     Float    @default(0)
+  change24h     Decimal    @default(0)
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -250,6 +335,22 @@ model ExchangeRate {
   toCurrencyRef   Currency @relation("ToCurrency", fields: [toCurrency], references: [code])
   
   @@unique([fromCurrency, toCurrency])
+  
+  // Indexes for better query performance
+  @@index([fromCurrency])
+  @@index([toCurrency])
+  @@index([rate])
+  @@index([trend])
+  @@index([change24h])
+  @@index([createdAt])
+  @@index([updatedAt])
+  // Composite indexes for common query patterns
+  @@index([fromCurrency, toCurrency])
+  @@index([fromCurrency, rate])
+  @@index([toCurrency, rate])
+  @@index([trend, createdAt])
+  @@index([change24h, createdAt])
+  
   @@map("exchange_rates")
 }
 
@@ -259,60 +360,51 @@ model Transaction {
   type              TransactionType
   status            TransactionStatus @default(PENDING)
 
-  // Price locking at purchase time
-  packagePriceAtPurchase  Float?    // xCoin price when purchased
-  packagePriceVersion     Int?      // Price version when purchased
-  vendorRateAtPurchase    Float?    // Vendor rate when purchased
-  exchangeRateSnapshot    Json?     // Full rate snapshot for audit
-  
   // Common fields
-  xCoinAmount       Float?
-  totalCost         Float?
+  totalCost         Decimal?
   quantity          Int               @default(1)
   notes             String?
   adminNotes        String?
   
-  // Package purchase specific
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Price locking at purchase time
+  packagePriceAtPurchase  Decimal?    // xCoin price when purchased
+  packagePriceVersion     Int?      // Price version when purchased
+  vendorRateAtPurchase    Decimal?    // Vendor rate when purchased
+  exchangeRateSnapshot    Json?     // Full rate snapshot for audit
+  
+  // Package purchase specific fields
   gameUserId        String?
   serverId          String?
   playerName        String?
   region            String?
   
-  // xCoin purchase specific
-  fromCurrency      String?
-  fromAmount        Float?
-  exchangeRate      Float?
-  processingFee     Float?
-  paymentMethod     String?
-  paymentReference  String?
-  
-  // Reseller request specific
-  requestedAmount   Float?
-  approvedAmount    Float?
-  paymentProof      String?
-  externalPaymentRef String?
-  approvedBy        String?
-  approvedAt        DateTime?
-  rejectionReason   String?
-  
-  // Vendor exchange specific
+  // Vendor exchange specific fields
   vendorName        String?
   vendorCurrency    String?
-  vendorCoinAmount  Float?
-  vendorTransactionId String?
-  relatedTransactionId String?
   
   // Special pricing for resellers
   specialPricing    Boolean   @default(false)
   priceType         String?   // 'BASE_VENDOR_COST' or 'VENDOR_PRICE'
   
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
   // Relations
   user              User     @relation(fields: [userId], references: [id])
   transactionPackages TransactionPackage[]
   orders            Order[]
+  
+  // Indexes for better query performance
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([gameUserId])
+  @@index([playerName])
+  // Composite indexes for common query patterns
+  @@index([type, status])
+  @@index([status, createdAt])
+  @@index([type, createdAt])
   
   @@map("transactions")
 }
@@ -321,11 +413,11 @@ model XCoinTransaction {
   id            String              @id @default(uuid())
   userId        String
   type          XCoinTransactionType
-  amount        Float
+  amount        Decimal
   fromCurrency  String?
-  fromAmount    Float?
-  rate          Float?
-  fees          Float               @default(0)
+  fromAmount    Decimal?
+  rate          Decimal?
+  fees          Decimal               @default(0)
   status        TransactionStatus   @default(PENDING)
   description   String
   
@@ -334,6 +426,18 @@ model XCoinTransaction {
   
   // Relations
   user          User @relation(fields: [userId], references: [id])
+  
+  // Indexes for better query performance
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([userId, type])
+  @@index([type, status])
+  @@index([status, createdAt])
+  @@index([userId, status])
+  @@index([type, createdAt])
   
   @@map("xcoin_transactions")
 }
@@ -346,12 +450,26 @@ model Order {
   playerName      String?
   packageKeywords String      // "wkp+86"
   status          OrderStatus @default(PENDING)
-  totalAmount     Float
+  totalAmount     Decimal
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
   transaction     Transaction @relation(fields: [transactionId], references: [id])
   vendorCalls     VendorCall[]
+  
+  // Indexes for better query performance
+  @@index([transactionId])
+  @@index([gameUserId])
+  @@index([serverId])
+  @@index([playerName])
+  @@index([status])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([transactionId, status])
+  @@index([status, createdAt])
+  @@index([gameUserId, status])
+  @@index([serverId, playerName])
+  
 }
 
 model VendorCall {
@@ -380,6 +498,20 @@ maxRetries        Int              @default(3)
   updatedAt         DateTime         @updatedAt
 
   order             Order            @relation(fields: [orderId], references: [id])
+  
+  // Indexes for better query performance
+  @@index([orderId])
+  @@index([vendorName])
+  @@index([vendorPackageCode])
+  @@index([status])
+  @@index([createdAt])
+  // Composite indexes for common query patterns
+  @@index([orderId, status])
+  @@index([vendorName, status])
+  @@index([status, createdAt])
+  @@index([vendorName, vendorPackageCode])
+  @@index([vendorPackageCode, status])
+  
 }
 
 // Enums
@@ -433,7 +565,7 @@ model SmileCoinBalance {
   id          String   @id @default(uuid())
   userId      String
   region      String   // "Brazil", "Thailand", "Philippines", etc.
-  balance     Float    @default(0)
+  balance     Decimal    @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

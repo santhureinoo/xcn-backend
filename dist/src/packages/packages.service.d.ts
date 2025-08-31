@@ -205,4 +205,5 @@ export declare class PackagesService {
         isValid: boolean;
         totalCost: number;
     }[]>;
+    getRegionsByGame(gameName: string): Promise<string[]>;
 }

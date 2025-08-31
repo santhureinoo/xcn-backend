@@ -280,7 +280,7 @@ export class TransactionsService {
       let actualTotalCost = 0;
 
       for (const validationResult of validationResults) {
-        const userResult = await this.processUserOrder(validationResult, bulkOrderData.placedBy);
+        const userResult = await this.processUserOrder(validationResult, bulkOrderData.placedBy, user.role);
         results.push(userResult);
 
         // Only count cost for successful packages
@@ -332,7 +332,8 @@ export class TransactionsService {
   // NEW: Process individual user order
   private async processUserOrder(
     validationResult: any,
-    placedBy: string
+    placedBy: string,
+    userRole: string
   ): Promise<UserOrderResult> {
     try {
       const { playerId, identifier, gameName, foundPackages, notFoundCodes, totalCost } = validationResult;
@@ -360,7 +361,7 @@ export class TransactionsService {
       const transaction = await this.prisma.transaction.create({
         data: {
           userId: placedBy,
-          type: 'RETAILER_PACKAGE_PURCHASE',
+          type: userRole === 'RESELLER' ? 'RESELLER_BULK_PURCHASE' : 'RETAILER_PACKAGE_PURCHASE',
           status: 'PROCESSING',
           gameUserId: playerId,
           serverId: identifier,
@@ -450,7 +451,6 @@ export class TransactionsService {
         where: { id: transaction.id },
         data: {
           status: finalStatus,
-          xCoinAmount: successfulPackagesCost,
           totalCost: successfulPackagesCost,
         },
       });
@@ -618,14 +618,29 @@ export class TransactionsService {
         this.packagesService.calculateMixedVendorCosts(packages, user.role);
 
       // Check user balance - handle both xCoin and Smile coin
-      if (hasSmilePackages && smileCoinCost > 0) {
-        const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === packages.pop()?.region);
-        if (selectedRegionalBalance) {
-          if (selectedRegionalBalance.balance < smileCoinCost) {
-            throw new BadRequestException(`Insufficient Smile coin balance. Required: ${smileCoinCost}, Available: ${selectedRegionalBalance.balance}`);
+      if (hasSmilePackages) {
+        // Check each package's vendor and region
+        for (const pkg of packages) {
+          console.log(pkg);
+          // If vendor is smile, check the smile coin balance for that region
+          if (pkg.vendor.toLowerCase() === 'smile') {
+            const region = pkg.region;
+            if (!region) {
+              throw new BadRequestException('Region not found for Smile package');
+            }
+
+            // Find the smile coin balance for the specific region
+            const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
+            const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
+            
+            if (selectedRegionalBalance) {
+              if (selectedRegionalBalance.balance < packagePrice) {
+                throw new BadRequestException(`insufficient Smile Coin`);
+              }
+            } else {
+              throw new BadRequestException(`insufficient Smile Coin`);
+            }
           }
-        } else {
-          throw new BadRequestException(`Invalid Region.`)
         }
       }
 
@@ -642,13 +657,12 @@ export class TransactionsService {
       const transaction = await this.prisma.transaction.create({
         data: {
           userId: orderData.userId,
-          type: 'RETAILER_PACKAGE_PURCHASE',
+          type: user.role === 'RESELLER' ? 'RESELLER_BULK_PURCHASE' : 'RETAILER_PACKAGE_PURCHASE',
           status: 'PROCESSING',
           gameUserId: orderData.playerDetails.playerId,
           serverId: orderData.playerDetails.identifier,
-          playerName: '',
+          playerName: `Player_${orderData.playerDetails.playerId}`,
           region: packages[0].region,
-          xCoinAmount: combinedCost,
           totalCost: combinedCost,
           quantity: packages.length,
           specialPricing: hasSmilePackages,
@@ -662,16 +676,16 @@ export class TransactionsService {
         const isSpecial = this.packagesService.isSpecialPricing(pkg, user.role);
 
         await this.prisma.transactionPackage.create({
-          data: {
-            transactionId: transaction.id,
-            packageId: pkg.id,
-            quantity: 1,
-            unitPrice: packagePrice,
-            totalPrice: packagePrice,
-            basePrice: pkg.price,
-            markupApplied: isSpecial ? 0 : (pkg.price - pkg.baseVendorCost),
-            markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
-          },
+        data: {
+          transactionId: transaction.id,
+          packageId: pkg.id,
+          quantity: 1,
+          unitPrice: packagePrice,
+          totalPrice: packagePrice,
+          basePrice: pkg.price,
+          markupApplied: isSpecial ? 0 : (pkg.price - pkg.baseVendorCost),
+          markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
+        },
         });
       }
 
@@ -717,7 +731,26 @@ export class TransactionsService {
         }
 
         if (smileCoinCost > 0) {
-          updateData.smileCoinBalance = { decrement: smileCoinCost };
+          // Decrement the regional smile coin balance
+          const region = packages[0]?.region;
+          if (region) {
+            const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
+            if (selectedRegionalBalance) {
+              updateData.smileCoinBalances = {
+                update: {
+                  where: {
+                    userId_region: {
+                      userId: orderData.userId,
+                      region: region,
+                    },
+                  },
+                  data: {
+                    balance: { decrement: smileCoinCost },
+                  },
+                },
+              };
+            }
+          }
           updateData.totalSpent = { increment: updateData.totalSpent ? updateData.totalSpent.increment + smileCoinCost : smileCoinCost };
         }
 
@@ -807,5 +840,29 @@ export class TransactionsService {
     });
 
     return transaction;
+  }
+
+  // NEW: Get smile coin balance by region
+  async getSmileCoinBalanceByRegion(userId: string, region: string): Promise<number> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          smileCoinBalances: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Find the smile coin balance for the specified region
+      const smileCoinBalance = user.smileCoinBalances?.find(balance => balance.region === region);
+
+      return smileCoinBalance ? smileCoinBalance.balance : 0;
+    } catch (error) {
+      console.error('Error fetching smile coin balance for region:', error);
+      return 0;
+    }
   }
 }

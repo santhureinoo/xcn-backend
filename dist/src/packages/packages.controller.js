@@ -129,6 +129,23 @@ let PackagesController = class PackagesController {
     async toggleStatus(id) {
         return this.packagesService.togglePackageStatus(id);
     }
+    async getRegionsByGame(gameName) {
+        try {
+            const regions = await this.packagesService.getRegionsByGame(gameName);
+            return {
+                success: true,
+                regions,
+            };
+        }
+        catch (error) {
+            console.error('Error fetching regions by game:', error);
+            return {
+                success: false,
+                error: error.message,
+                regions: [],
+            };
+        }
+    }
 };
 exports.PackagesController = PackagesController;
 __decorate([
@@ -216,6 +233,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], PackagesController.prototype, "toggleStatus", null);
+__decorate([
+    (0, common_1.Get)('regions/:gameName'),
+    __param(0, (0, common_1.Param)('gameName')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PackagesController.prototype, "getRegionsByGame", null);
 exports.PackagesController = PackagesController = __decorate([
     (0, common_1.Controller)('packages'),
     __metadata("design:paramtypes", [packages_service_1.PackagesService])

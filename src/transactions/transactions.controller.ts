@@ -164,4 +164,34 @@ export class TransactionsController {
       };
     }
   }
+  
+  // NEW: Get smile coin balance by region
+  @Get('smile-balance/:region')
+  async getSmileCoinBalanceByRegion(@Request() req, @Param('region') region: string) {
+    try {
+      if (!req.user || !req.user.userId) {
+        return {
+          success: false,
+          message: 'User not authenticated or user ID missing',
+          statusCode: 401,
+        };
+      }
+
+      const balance = await this.transactionsService.getSmileCoinBalanceByRegion(req.user.userId, region);
+
+      return {
+        success: true,
+        balance: balance,
+        region: region,
+        currency: 'Smile Coins',
+      };
+    } catch (error) {
+      console.error('Smile coin balance by region endpoint error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch smile coin balance',
+        statusCode: 500,
+      };
+    }
+  }
 }

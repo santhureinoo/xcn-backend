@@ -723,6 +723,32 @@ export class PackagesService {
       });
     }
 
-    return results;
-  }
-}
+    
+        return results;
+      }
+    
+      // NEW: Get regions by game name
+      async getRegionsByGame(gameName: string) {
+        try {
+          const regions = await this.prisma.package.findMany({
+            where: {
+              gameName: {
+                contains: gameName,
+              },
+            },
+            select: {
+              region: true,
+            },
+            distinct: ['region'],
+            orderBy: {
+              region: 'asc',
+            },
+          });
+    
+          return regions.map(r => r.region).filter(region => region);
+        } catch (error) {
+          console.error('Error fetching regions by game:', error);
+          throw new BadRequestException('Failed to fetch regions by game: ' + error.message);
+        }
+      }
+    }

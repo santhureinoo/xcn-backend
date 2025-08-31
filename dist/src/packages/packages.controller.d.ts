@@ -184,4 +184,13 @@ export declare class PackagesController {
         package: any;
         message: string;
     }>;
+    getRegionsByGame(gameName: string): Promise<{
+        success: boolean;
+        regions: string[];
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        regions: never[];
+    }>;
 }

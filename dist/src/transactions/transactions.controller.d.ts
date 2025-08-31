@@ -157,4 +157,19 @@ export declare class TransactionsController {
         order?: undefined;
         orderId?: undefined;
     }>;
+    getSmileCoinBalanceByRegion(req: any, region: string): Promise<{
+        success: boolean;
+        balance: number;
+        region: string;
+        currency: string;
+        message?: undefined;
+        statusCode?: undefined;
+    } | {
+        success: boolean;
+        message: any;
+        statusCode: number;
+        balance?: undefined;
+        region?: undefined;
+        currency?: undefined;
+    }>;
 }

@@ -186,7 +186,7 @@ let TransactionsService = class TransactionsService {
             let partialSuccessOrders = 0;
             let actualTotalCost = 0;
             for (const validationResult of validationResults) {
-                const userResult = await this.processUserOrder(validationResult, bulkOrderData.placedBy);
+                const userResult = await this.processUserOrder(validationResult, bulkOrderData.placedBy, user.role);
                 results.push(userResult);
                 const successfulPackagesCost = userResult.packages
                     .filter(pkg => pkg.success)
@@ -230,7 +230,7 @@ let TransactionsService = class TransactionsService {
             throw new common_1.BadRequestException(`Failed to process bulk order: ${error.message}`);
         }
     }
-    async processUserOrder(validationResult, placedBy) {
+    async processUserOrder(validationResult, placedBy, userRole) {
         try {
             const { playerId, identifier, gameName, foundPackages, notFoundCodes, totalCost } = validationResult;
             if (foundPackages.length === 0) {
@@ -253,7 +253,7 @@ let TransactionsService = class TransactionsService {
             const transaction = await this.prisma.transaction.create({
                 data: {
                     userId: placedBy,
-                    type: 'RETAILER_PACKAGE_PURCHASE',
+                    type: userRole === 'RESELLER' ? 'RESELLER_BULK_PURCHASE' : 'RETAILER_PACKAGE_PURCHASE',
                     status: 'PROCESSING',
                     gameUserId: playerId,
                     serverId: identifier,
@@ -329,7 +329,6 @@ let TransactionsService = class TransactionsService {
                 where: { id: transaction.id },
                 data: {
                     status: finalStatus,
-                    xCoinAmount: successfulPackagesCost,
                     totalCost: successfulPackagesCost,
                 },
             });
@@ -444,15 +443,25 @@ let TransactionsService = class TransactionsService {
                 packages.push(pkg);
             }
             const { xCoinCost: totalPrice, smileCoinCost, hasSmilePackages } = this.packagesService.calculateMixedVendorCosts(packages, user.role);
-            if (hasSmilePackages && smileCoinCost > 0) {
-                const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === packages.pop()?.region);
-                if (selectedRegionalBalance) {
-                    if (selectedRegionalBalance.balance < smileCoinCost) {
-                        throw new common_1.BadRequestException(`Insufficient Smile coin balance. Required: ${smileCoinCost}, Available: ${selectedRegionalBalance.balance}`);
+            if (hasSmilePackages) {
+                for (const pkg of packages) {
+                    console.log(pkg);
+                    if (pkg.vendor.toLowerCase() === 'smile') {
+                        const region = pkg.region;
+                        if (!region) {
+                            throw new common_1.BadRequestException('Region not found for Smile package');
+                        }
+                        const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
+                        const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
+                        if (selectedRegionalBalance) {
+                            if (selectedRegionalBalance.balance < packagePrice) {
+                                throw new common_1.BadRequestException(`insufficient Smile Coin`);
+                            }
+                        }
+                        else {
+                            throw new common_1.BadRequestException(`insufficient Smile Coin`);
+                        }
                     }
-                }
-                else {
-                    throw new common_1.BadRequestException(`Invalid Region.`);
                 }
             }
             if (totalPrice > 0) {
@@ -464,13 +473,12 @@ let TransactionsService = class TransactionsService {
             const transaction = await this.prisma.transaction.create({
                 data: {
                     userId: orderData.userId,
-                    type: 'RETAILER_PACKAGE_PURCHASE',
+                    type: user.role === 'RESELLER' ? 'RESELLER_BULK_PURCHASE' : 'RETAILER_PACKAGE_PURCHASE',
                     status: 'PROCESSING',
                     gameUserId: orderData.playerDetails.playerId,
                     serverId: orderData.playerDetails.identifier,
-                    playerName: '',
+                    playerName: `Player_${orderData.playerDetails.playerId}`,
                     region: packages[0].region,
-                    xCoinAmount: combinedCost,
                     totalCost: combinedCost,
                     quantity: packages.length,
                     specialPricing: hasSmilePackages,
@@ -523,7 +531,25 @@ let TransactionsService = class TransactionsService {
                     updateData.totalSpent = { increment: totalPrice };
                 }
                 if (smileCoinCost > 0) {
-                    updateData.smileCoinBalance = { decrement: smileCoinCost };
+                    const region = packages[0]?.region;
+                    if (region) {
+                        const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
+                        if (selectedRegionalBalance) {
+                            updateData.smileCoinBalances = {
+                                update: {
+                                    where: {
+                                        userId_region: {
+                                            userId: orderData.userId,
+                                            region: region,
+                                        },
+                                    },
+                                    data: {
+                                        balance: { decrement: smileCoinCost },
+                                    },
+                                },
+                            };
+                        }
+                    }
                     updateData.totalSpent = { increment: updateData.totalSpent ? updateData.totalSpent.increment + smileCoinCost : smileCoinCost };
                 }
                 await this.prisma.user.update({
@@ -596,6 +622,25 @@ let TransactionsService = class TransactionsService {
             }
         });
         return transaction;
+    }
+    async getSmileCoinBalanceByRegion(userId, region) {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                include: {
+                    smileCoinBalances: true,
+                },
+            });
+            if (!user) {
+                throw new common_1.NotFoundException('User not found');
+            }
+            const smileCoinBalance = user.smileCoinBalances?.find(balance => balance.region === region);
+            return smileCoinBalance ? smileCoinBalance.balance : 0;
+        }
+        catch (error) {
+            console.error('Error fetching smile coin balance for region:', error);
+            return 0;
+        }
     }
 };
 exports.TransactionsService = TransactionsService;

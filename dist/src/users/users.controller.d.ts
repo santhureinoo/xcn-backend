@@ -102,6 +102,12 @@ export declare class UsersController {
         }[];
         currency: string;
     }>;
+    getSmileCoinBalanceByRegion(req: any, region: string): Promise<{
+        success: boolean;
+        balance: number;
+        region: string;
+        currency: string;
+    }>;
     findOne(id: string): Promise<{
         success: boolean;
         user: {

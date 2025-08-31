@@ -171,4 +171,23 @@ export class PackagesController {
   async toggleStatus(@Param('id') id: string) {
     return this.packagesService.togglePackageStatus(id);
   }
+
+  // NEW: Get regions by game name
+  @Get('regions/:gameName')
+  async getRegionsByGame(@Param('gameName') gameName: string) {
+    try {
+      const regions = await this.packagesService.getRegionsByGame(gameName);
+      return {
+        success: true,
+        regions,
+      };
+    } catch (error) {
+      console.error('Error fetching regions by game:', error);
+      return {
+        success: false,
+        error: error.message,
+        regions: [],
+      };
+    }
+  }
 }

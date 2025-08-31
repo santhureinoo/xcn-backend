@@ -179,6 +179,43 @@ let UsersController = class UsersController {
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    async getSmileCoinBalanceByRegion(req, region) {
+        try {
+            if (!req.user || !req.user.userId) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'User not authenticated or user ID missing',
+                    statusCode: common_1.HttpStatus.UNAUTHORIZED,
+                }, common_1.HttpStatus.UNAUTHORIZED);
+            }
+            const user = await this.usersService.findById(req.user.userId);
+            if (!user) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'User not found',
+                    statusCode: common_1.HttpStatus.NOT_FOUND,
+                }, common_1.HttpStatus.NOT_FOUND);
+            }
+            const smileCoinBalance = user.smileCoinBalances?.find(balance => balance.region === region);
+            return {
+                success: true,
+                balance: smileCoinBalance ? smileCoinBalance.balance : 0,
+                region: region,
+                currency: 'Smile Coins',
+            };
+        }
+        catch (error) {
+            console.error('Smile coin balance by region endpoint error:', error);
+            if (error instanceof common_1.HttpException) {
+                throw error;
+            }
+            throw new common_1.HttpException({
+                success: false,
+                message: error.message || 'Failed to fetch smile coin balance',
+                statusCode: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
     async findOne(id) {
         try {
             const user = await this.usersService.findById(id);
@@ -512,6 +549,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getBalance", null);
+__decorate([
+    (0, common_1.Get)('smile-balance/:region'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('region')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getSmileCoinBalanceByRegion", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, common_1.UseGuards)(admin_guard_1.AdminGuard),

@@ -223,6 +223,58 @@ export class UsersController {
     }
   }
 
+  @Get('smile-balance/:region')
+  async getSmileCoinBalanceByRegion(@Request() req, @Param('region') region: string) {
+    try {
+      if (!req.user || !req.user.userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'User not authenticated or user ID missing',
+            statusCode: HttpStatus.UNAUTHORIZED,
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      const user = await this.usersService.findById(req.user.userId);
+      if (!user) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'User not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Find the smile coin balance for the specified region
+      const smileCoinBalance = user.smileCoinBalances?.find(balance => balance.region === region);
+
+      return {
+        success: true,
+        balance: smileCoinBalance ? smileCoinBalance.balance : 0,
+        region: region,
+        currency: 'Smile Coins',
+      };
+    } catch (error) {
+      console.error('Smile coin balance by region endpoint error:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to fetch smile coin balance',
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get(':id')
   @UseGuards(AdminGuard)
   async findOne(@Param('id') id: string) {

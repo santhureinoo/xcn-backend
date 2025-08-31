@@ -129,6 +129,32 @@ let TransactionsController = class TransactionsController {
             };
         }
     }
+    async getSmileCoinBalanceByRegion(req, region) {
+        try {
+            if (!req.user || !req.user.userId) {
+                return {
+                    success: false,
+                    message: 'User not authenticated or user ID missing',
+                    statusCode: 401,
+                };
+            }
+            const balance = await this.transactionsService.getSmileCoinBalanceByRegion(req.user.userId, region);
+            return {
+                success: true,
+                balance: balance,
+                region: region,
+                currency: 'Smile Coins',
+            };
+        }
+        catch (error) {
+            console.error('Smile coin balance by region endpoint error:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch smile coin balance',
+                statusCode: 500,
+            };
+        }
+    }
 };
 exports.TransactionsController = TransactionsController;
 __decorate([
@@ -160,6 +186,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], TransactionsController.prototype, "createOrder", null);
+__decorate([
+    (0, common_1.Get)('smile-balance/:region'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('region')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], TransactionsController.prototype, "getSmileCoinBalanceByRegion", null);
 exports.TransactionsController = TransactionsController = __decorate([
     (0, common_1.Controller)('transactions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

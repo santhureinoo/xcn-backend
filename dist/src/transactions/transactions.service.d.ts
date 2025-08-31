@@ -261,5 +261,6 @@ export declare class TransactionsService {
         specialPricing: boolean;
         priceType: string | null;
     }>;
+    getSmileCoinBalanceByRegion(userId: string, region: string): Promise<number>;
 }
 export {};
