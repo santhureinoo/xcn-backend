@@ -7,15 +7,16 @@ export class VendorRatesService {
 
   // Update vendor exchange rate
   async updateVendorRate(
-    vendorName: string, 
-    vendorCurrency: string, 
+    vendorName: string,
+    vendorCurrency: string,
+    region: string,
     newXCoinRate: number,
     updatedBy: string,
     reason?: string
   ) {
     // Get current rate for history
     const currentRate = await this.prisma.vendorExchangeRate.findUnique({
-      where: { vendorName: vendorName }
+      where: { vendorName_region: { vendorName, region } }
     });
 
     // Calculate trend
@@ -29,14 +30,17 @@ export class VendorRatesService {
     let updatedRate;
 
     const oldRate = await this.prisma.vendorExchangeRate.findUnique({
-      where: { vendorName: vendorName }
+      where: { vendorName_region: { vendorName, region } }
     });
 
     if(oldRate) {
       updatedRate = await this.prisma.vendorExchangeRate.update({
-        where: { vendorName: vendorName },
+        where: { vendorName_region: { vendorName, region } },
         data: {
+          vendorCurrency,
           xCoinRate: newXCoinRate,
+          trend: trend as any,
+          change24h: change24h,
           updatedBy,
           updateReason: reason
         }
@@ -46,31 +50,35 @@ export class VendorRatesService {
         data: {
           vendorName,
           vendorCurrency,
+          region,
           xCoinRate: newXCoinRate,
+          trend: trend as any,
+          change24h: change24h,
           updatedBy,
           updateReason: reason
         }
       });
     }
 
-    // Update all packages using this vendor currency
-    await this.updatePackagePrices(vendorName, vendorCurrency, oldRate ? oldRate.xCoinRate : updatedRate.xCoinRate);
+    // Update all packages using this vendor currency and region
+    await this.updatePackagePrices(vendorName, vendorCurrency, region, oldRate ? oldRate.xCoinRate : updatedRate.xCoinRate);
 
     return updatedRate;
   }
 
   // Update package prices when vendor rates change
-  private async updatePackagePrices(vendorName: string, vendorCurrency: string, oldRate: number) {
+  private async updatePackagePrices(vendorName: string, vendorCurrency: string, region: string, oldRate: number) {
     const packages = await this.prisma.package.findMany({
       where: {
         vendor: vendorName,
         vendorCurrency: vendorCurrency,
+        region: region,
         isPriceLocked: false // Only update packages that are NOT locked
       }
     });
 
     const vendorRate = await this.prisma.vendorExchangeRate.findUnique({
-      where: { vendorName }
+      where: { vendorName_region: { vendorName, region } }
     });
 
     if (!vendorRate || vendorRate.xCoinRate === null) return;
@@ -214,19 +222,27 @@ export class VendorRatesService {
     return Math.max(0, finalVendorPrice); // Ensure price is never negative
   }  // Get current vendor rates
   async getVendorRates() {
-    return this.prisma.vendorExchangeRate.findMany({
+    const rates = await this.prisma.vendorExchangeRate.findMany({
       where: { isActive: true },
       orderBy: [
         { vendorName: 'asc' },
         { vendorCurrency: 'asc' }
       ]
     });
+    
+    // Ensure all numeric values are properly converted to numbers
+    return rates.map(rate => ({
+      ...rate,
+      xCoinRate: parseFloat(rate.xCoinRate.toString()),
+      change24h: parseFloat(rate.change24h.toString()),
+      previousRate: rate.previousRate ? parseFloat(rate.previousRate.toString()) : null
+    }));
   }
 
   // Get rate history for a vendor
-  async getVendorRateHistory(vendorName: string, vendorCurrency: string) {
+  async getVendorRateHistory(vendorName: string, vendorCurrency: string, region: string) {
     return this.prisma.vendorExchangeRate.findUnique({
-      where: { vendorName },
+      where: { vendorName_region: { vendorName, region } },
       select: {
         rateHistory: true,
         previousRate: true,

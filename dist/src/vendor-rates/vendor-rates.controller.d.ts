@@ -5,24 +5,26 @@ export declare class VendorRatesController {
     getVendorRates(): Promise<{
         success: boolean;
         rates: {
+            xCoinRate: number;
+            change24h: number;
+            previousRate: number | null;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            region: string;
             vendorName: string;
             vendorCurrency: string;
-            xCoinRate: import("@prisma/client/runtime/library").Decimal;
             trend: import(".prisma/client").$Enums.RateTrend;
-            change24h: import("@prisma/client/runtime/library").Decimal;
             isActive: boolean;
-            previousRate: import("@prisma/client/runtime/library").Decimal | null;
             rateHistory: import("@prisma/client/runtime/library").JsonValue | null;
             updatedBy: string | null;
             updateReason: string | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
     }>;
     updateVendorRate(updateData: {
         vendorName: string;
         vendorCurrency: string;
+        region: string;
         newRate: number;
         updatedBy: string;
         reason?: string;
@@ -31,13 +33,13 @@ export declare class VendorRatesController {
         message: string;
         rate: any;
     }>;
-    getVendorRateHistory(vendorName: string, vendorCurrency: string): Promise<{
+    getVendorRateHistory(vendorName: string, vendorCurrency: string, region: string): Promise<{
         success: boolean;
         history: {
+            updatedAt: Date;
             xCoinRate: import("@prisma/client/runtime/library").Decimal;
             previousRate: import("@prisma/client/runtime/library").Decimal | null;
             rateHistory: import("@prisma/client/runtime/library").JsonValue;
-            updatedAt: Date;
         } | null;
     }>;
 }

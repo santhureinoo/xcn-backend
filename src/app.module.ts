@@ -9,6 +9,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { VendorRatesModule } from './vendor-rates/vendor-rates.module';
 import { MarkupsModule } from './markups/markups.module';
 import { RegionGameVendorModule } from './region-game-vendor/region-game-vendor.module';
+import { RegionModule } from './region/region.module';
 
 @Module({
 
@@ -24,7 +25,8 @@ import { RegionGameVendorModule } from './region-game-vendor/region-game-vendor.
     VendorRatesModule,
     TransactionsModule,
     MarkupsModule,
-    RegionGameVendorModule
+    RegionGameVendorModule,
+    RegionModule
   ],
 })
 export class AppModule { }

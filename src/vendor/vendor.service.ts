@@ -85,6 +85,8 @@ export class VendorService {
       },
     });
 
+    console.log('Starting vendor call process for procesVendorcall:', vendorCall.id);
+
     return this.attemptVendorCall(vendorCall.id, playerId, serverId);
   }
 
@@ -172,6 +174,7 @@ export class VendorService {
 
           // Schedule the retry (in production, use a queue like Bull)
           setTimeout(() => {
+            console.log('Retrying vendor call now... in setTimeout');
             this.attemptVendorCall(vendorCallId, playerId, serverId);
           }, nextRetryDelay);
 
@@ -237,7 +240,12 @@ export class VendorService {
     playerId: string,
     serverId: string
   ): Promise<VendorCallResult> {
-    const config = this.vendorConfigs[vendorName];
+
+    const vendorExchangRate = await this.prisma.vendorExchangeRate.findFirst({
+      where: { id: vendorName}
+    });
+
+    const config = this.vendorConfigs[vendorExchangRate?.vendorCurrency || ''];
     
     if (!config) {
       return {
@@ -248,7 +256,7 @@ export class VendorService {
       };
     }
 
-    switch (vendorName) {
+    switch (vendorExchangRate?.vendorCurrency) {
       case 'SMILE_COIN':
         return this.callSmileCoinApi(config, packageCode, playerId, serverId);
       case 'RAZOR_GOLD':
@@ -272,6 +280,12 @@ export class VendorService {
     playerId: string,
     serverId: string
   ): Promise<VendorCallResult> {
+      return {
+          success: true,
+          vendorOrderId: 'tte', //data.orderId || data.transactionId,
+          vendorResponse: {},
+          shouldRetry: false,
+        };
     try {
       const request: SmileCoinRequest = {
         playerId,
@@ -465,6 +479,7 @@ export class VendorService {
     for (const vendorCall of pendingRetries) {
       const { playerId, serverId } = vendorCall.requestPayload as any;
       
+      console.log('Processing retry for vendor call in process:', vendorCall.id);
       // Process retry without blocking
       this.attemptVendorCall(vendorCall.id, playerId, serverId)
         .catch(error => {

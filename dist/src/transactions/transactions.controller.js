@@ -109,15 +109,14 @@ let TransactionsController = class TransactionsController {
                 packageId,
                 playerId,
                 identifier,
-                packageCode,
                 gameName,
                 userId,
                 playerDetails
             });
             return {
-                success: true,
+                success: order.success,
                 order,
-                orderId: order.order.id,
+                orderId: order.order?.id,
                 message: 'Order created successfully'
             };
         }
@@ -152,6 +151,145 @@ let TransactionsController = class TransactionsController {
                 success: false,
                 message: error.message || 'Failed to fetch smile coin balance',
                 statusCode: 500,
+            };
+        }
+    }
+    async getXCoinTransactions(req, query) {
+        try {
+            const userId = req.user?.userId || req.user?.sub;
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'User not authenticated'
+                };
+            }
+            const { page = '1', limit = '50', sortBy = 'createdAt', sortOrder = 'desc' } = query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            const take = parseInt(limit);
+            const result = await this.transactionsService.getXCoinTransactions({
+                userId,
+                skip,
+                take,
+                sortBy,
+                sortOrder
+            });
+            return {
+                success: true,
+                transactions: result.transactions,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / parseInt(limit)),
+                    hasMore: result.hasMore
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error in getXCoinTransactions:', error);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+    async getPackageTransactions(req, query) {
+        try {
+            const userId = req.user?.userId || req.user?.sub;
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'User not authenticated'
+                };
+            }
+            const { page = '1', limit = '50', sortBy = 'createdAt', sortOrder = 'desc' } = query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            const take = parseInt(limit);
+            const result = await this.transactionsService.getPackageTransactions({
+                userId,
+                skip,
+                take,
+                sortBy,
+                sortOrder
+            });
+            return {
+                success: true,
+                transactions: result.transactions,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / parseInt(limit)),
+                    hasMore: result.hasMore
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error in getPackageTransactions:', error);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+    async getXCoinTransactionById(id) {
+        try {
+            const transaction = await this.transactionsService.getXCoinTransactionById(id);
+            if (!transaction) {
+                return {
+                    success: false,
+                    message: 'XCoin transaction not found'
+                };
+            }
+            return {
+                success: true,
+                transaction
+            };
+        }
+        catch (error) {
+            console.error('Error in getXCoinTransactionById:', error);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+    async getSmileCoinTransactions(req, query) {
+        try {
+            const userId = req.user?.userId || req.user?.sub;
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'User not authenticated'
+                };
+            }
+            const { page = '1', limit = '50', sortBy = 'createdAt', sortOrder = 'desc' } = query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            const take = parseInt(limit);
+            const result = await this.transactionsService.getSmileCoinTransactions({
+                userId,
+                skip,
+                take,
+                sortBy,
+                sortOrder
+            });
+            return {
+                success: true,
+                transactions: result.transactions,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / parseInt(limit)),
+                    hasMore: result.hasMore
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error in getSmileCoinTransactions:', error);
+            return {
+                success: false,
+                message: error.message
             };
         }
     }
@@ -194,6 +332,37 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], TransactionsController.prototype, "getSmileCoinBalanceByRegion", null);
+__decorate([
+    (0, common_1.Get)('xcoin'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], TransactionsController.prototype, "getXCoinTransactions", null);
+__decorate([
+    (0, common_1.Get)('packages'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], TransactionsController.prototype, "getPackageTransactions", null);
+__decorate([
+    (0, common_1.Get)('xcoin/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TransactionsController.prototype, "getXCoinTransactionById", null);
+__decorate([
+    (0, common_1.Get)('smile'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], TransactionsController.prototype, "getSmileCoinTransactions", null);
 exports.TransactionsController = TransactionsController = __decorate([
     (0, common_1.Controller)('transactions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

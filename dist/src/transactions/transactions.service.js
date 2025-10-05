@@ -355,49 +355,49 @@ let TransactionsService = class TransactionsService {
             };
         }
     }
-    async processPackage(pkgs, playerId, identifier, orderId) {
+    async processPackage(pkg, playerId, identifier, orderId) {
         try {
             const results = [];
-            for (let i = 0; i < pkgs.length; i++) {
-                const pkg = pkgs[i];
-                try {
-                    console.log(`🔄 Processing package ${pkg.vendorPackageCode} for player ${playerId}...`);
-                    const vendorResult = await this.vendorService.processVendorCall(orderId, pkg.vendor, pkg.vendorPackageCode, playerId, identifier);
+            const packageVendorCodes = pkg.vendorPackageCode.split(',').map((code) => code.trim());
+            try {
+                console.log(`🔄 Processing package ${pkg.vendorPackageCode} for player ${playerId}...`);
+                for (let i = 0; i < packageVendorCodes.length; i++) {
+                    const vendorResult = await this.vendorService.processVendorCall(orderId, pkg.vendor, packageVendorCodes[i], playerId, identifier);
                     if (vendorResult.success) {
-                        console.log(`✅ Package ${pkg.vendorPackageCode} processed successfully for player ${playerId}`);
+                        console.log(`✅ Package ${packageVendorCodes[i]} processed successfully for player ${playerId}`);
                         results.push({
                             success: true,
-                            packageCode: pkg.vendorPackageCode,
+                            packageCode: packageVendorCodes[i],
                             vendorOrderId: vendorResult.vendorOrderId
                         });
                     }
                     else {
-                        console.log(`❌ Package ${pkg.vendorPackageCode} failed for player ${playerId}: ${vendorResult.error}`);
+                        console.log(`❌ Package ${packageVendorCodes[i]} failed for player ${playerId}: ${vendorResult.error}`);
                         results.push({
                             success: false,
-                            packageCode: pkg.vendorPackageCode,
+                            packageCode: packageVendorCodes[i],
                             error: vendorResult.error || 'Vendor API call failed'
                         });
                     }
                 }
-                catch (packageError) {
-                    console.error(`💥 Error processing package ${pkg.vendorPackageCode}:`, packageError);
-                    results.push({
-                        success: false,
-                        packageCode: pkg.vendorPackageCode,
-                        error: packageError.message
-                    });
-                }
+            }
+            catch (packageError) {
+                console.error(`💥 Error processing package ${pkg.vendorPackageCode}:`, packageError);
+                results.push({
+                    success: false,
+                    packageCode: pkg.vendorPackageCode,
+                    error: packageError.message
+                });
             }
             const successfulPackages = results.filter(r => r.success);
             const failedPackages = results.filter(r => !r.success);
-            if (successfulPackages.length === pkgs.length) {
+            if (successfulPackages.length === packageVendorCodes.length) {
                 return { success: true };
             }
             else if (successfulPackages.length > 0) {
                 return {
                     success: false,
-                    error: `Partial success: ${successfulPackages.length}/${pkgs.length} packages processed. Failed: ${failedPackages.map(f => f.packageCode).join(', ')}`
+                    error: `Partial success: ${successfulPackages.length}/${packageVendorCodes.length} packages processed. Failed: ${failedPackages.map(f => f.packageCode).join(', ')}`
                 };
             }
             else {
@@ -417,7 +417,6 @@ let TransactionsService = class TransactionsService {
     }
     async createOrder(orderData) {
         try {
-            const packageCodes = orderData.packageCode.split(',').map(code => code.trim());
             const user = await this.prisma.user.findUnique({
                 where: { id: orderData.userId },
                 include: {
@@ -427,32 +426,39 @@ let TransactionsService = class TransactionsService {
             if (!user) {
                 throw new common_1.NotFoundException('User not found');
             }
-            const packages = [];
-            for (const code of packageCodes) {
-                const pkg = await this.prisma.package.findFirst({
-                    where: {
-                        vendorPackageCode: {
-                            contains: code,
-                        },
-                        gameName: orderData.gameName,
+            const packageIds = orderData.packageId.split(',').map(id => id.trim());
+            const uniquePackageIds = [...new Set(packageIds)];
+            const uniquePackages = await this.prisma.package.findMany({
+                where: {
+                    id: {
+                        in: uniquePackageIds,
                     },
-                });
-                if (!pkg) {
-                    throw new common_1.NotFoundException(`Package with code ${code} not found`);
+                    gameName: orderData.gameName,
+                },
+                include: {
+                    vendorRate: true,
                 }
-                packages.push(pkg);
+            });
+            if (!uniquePackages || uniquePackages.length === 0) {
+                throw new common_1.NotFoundException(`Package not found`);
             }
-            const { xCoinCost: totalPrice, smileCoinCost, hasSmilePackages } = this.packagesService.calculateMixedVendorCosts(packages, user.role);
+            const pkg = packageIds.map(id => {
+                const foundPackage = uniquePackages.find(p => p.id === id);
+                if (!foundPackage) {
+                    throw new common_1.NotFoundException(`Package with ID ${id} not found`);
+                }
+                return foundPackage;
+            });
+            const { xCoinCost: totalPrice, smileCoinCost, hasSmilePackages } = await this.packagesService.calculateMixedVendorCosts(pkg, user.role);
             if (hasSmilePackages) {
-                for (const pkg of packages) {
-                    console.log(pkg);
-                    if (pkg.vendor.toLowerCase() === 'smile') {
-                        const region = pkg.region;
+                for (const pkgItem of pkg) {
+                    if (pkgItem.vendor.toLowerCase() === 'smile') {
+                        const region = pkgItem.region;
                         if (!region) {
                             throw new common_1.BadRequestException('Region not found for Smile package');
                         }
                         const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
-                        const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
+                        const packagePrice = this.packagesService.getPackagePrice(pkgItem, user.role);
                         if (selectedRegionalBalance) {
                             if (parseFloat(selectedRegionalBalance.balance.toString()) < packagePrice) {
                                 throw new common_1.BadRequestException(`insufficient Smile Coin`);
@@ -478,25 +484,25 @@ let TransactionsService = class TransactionsService {
                     gameUserId: orderData.playerDetails.playerId,
                     serverId: orderData.playerDetails.identifier,
                     playerName: `Player_${orderData.playerDetails.playerId}`,
-                    region: packages[0].region,
+                    region: pkg[0]?.region,
                     totalCost: combinedCost,
-                    quantity: packages.length,
+                    quantity: pkg.length,
                     specialPricing: hasSmilePackages,
                     priceType: hasSmilePackages ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
                 },
             });
-            for (const pkg of packages) {
-                const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
-                const isSpecial = this.packagesService.isSpecialPricing(pkg, user.role);
+            for (const pkgItem of pkg) {
+                const packagePrice = this.packagesService.getPackagePrice(pkgItem, user.role);
+                const isSpecial = await this.packagesService.isSpecialPricing(pkgItem, user.role);
                 await this.prisma.transactionPackage.create({
                     data: {
                         transactionId: transaction.id,
-                        packageId: pkg.id,
+                        packageId: pkgItem.id,
                         quantity: 1,
                         unitPrice: packagePrice,
                         totalPrice: packagePrice,
-                        basePrice: parseFloat(pkg.price.toString()),
-                        markupApplied: isSpecial ? 0 : (parseFloat(pkg.price.toString()) - parseFloat(pkg.baseVendorCost.toString())),
+                        basePrice: parseFloat(pkgItem.price.toString()),
+                        markupApplied: isSpecial ? 0 : (parseFloat(pkgItem.price.toString()) - parseFloat(pkgItem.baseVendorCost.toString())),
                         markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
                     },
                 });
@@ -507,12 +513,20 @@ let TransactionsService = class TransactionsService {
                     gameUserId: orderData.playerId,
                     serverId: orderData.identifier,
                     playerName: `Player_${orderData.playerId}`,
-                    packageKeywords: packageCodes.join(','),
+                    packageKeywords: pkg.map(p => p.vendorPackageCode).join(','),
                     status: 'PENDING',
                     totalAmount: combinedCost,
                 },
             });
-            const result = await this.processPackage(packages, orderData.playerId, orderData.identifier, order.id);
+            let overallResult = { success: true };
+            for (const singlePackage of pkg) {
+                const packageResult = await this.processPackage(singlePackage, orderData.playerId, orderData.identifier, order.id);
+                if (!packageResult.success) {
+                    overallResult = { success: false, error: packageResult.error || 'Package processing failed' };
+                    break;
+                }
+            }
+            const result = overallResult;
             const finalStatus = result.success ? 'COMPLETED' : 'FAILED';
             await this.prisma.transaction.update({
                 where: { id: transaction.id },
@@ -531,7 +545,7 @@ let TransactionsService = class TransactionsService {
                     updateData.totalSpent = { increment: totalPrice };
                 }
                 if (smileCoinCost > 0) {
-                    const region = packages[0]?.region;
+                    const region = pkg[0]?.region;
                     if (region) {
                         const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
                         if (selectedRegionalBalance) {
@@ -563,7 +577,7 @@ let TransactionsService = class TransactionsService {
                     id: order.id,
                     status: finalStatus,
                     amount: combinedCost,
-                    packageName: packages.map(p => p.name).join(', '),
+                    packageName: pkg.map(p => p.name).join(', '),
                     playerId: orderData.playerId,
                     createdAt: order.createdAt,
                 },
@@ -640,6 +654,156 @@ let TransactionsService = class TransactionsService {
         catch (error) {
             console.error('Error fetching smile coin balance for region:', error);
             return 0;
+        }
+    }
+    async getXCoinTransactions(params) {
+        try {
+            const { userId, skip, take, sortBy, sortOrder } = params;
+            const orderBy = {};
+            if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+                orderBy[sortBy] = sortOrder;
+            }
+            else {
+                orderBy.createdAt = sortOrder;
+            }
+            const [transactions, total] = await Promise.all([
+                this.prisma.xCoinTransaction.findMany({
+                    where: {
+                        userId: userId,
+                    },
+                    orderBy,
+                    skip,
+                    take,
+                }),
+                this.prisma.xCoinTransaction.count({
+                    where: {
+                        userId: userId,
+                    },
+                }),
+            ]);
+            return {
+                transactions,
+                total,
+                hasMore: skip + take < total,
+            };
+        }
+        catch (error) {
+            console.error('Error fetching XCoin transactions:', error);
+            throw new common_1.BadRequestException('Failed to fetch XCoin transactions');
+        }
+    }
+    async getPackageTransactions(params) {
+        try {
+            const { userId, skip, take, sortBy, sortOrder } = params;
+            const orderBy = {};
+            if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+                orderBy[sortBy] = sortOrder;
+            }
+            else {
+                orderBy.createdAt = sortOrder;
+            }
+            const [transactions, total] = await Promise.all([
+                this.prisma.transaction.findMany({
+                    where: {
+                        userId: userId,
+                    },
+                    orderBy,
+                    skip,
+                    take,
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                role: true,
+                            },
+                        },
+                        transactionPackages: {
+                            include: {
+                                package: true,
+                            },
+                        },
+                    },
+                }),
+                this.prisma.transaction.count({
+                    where: {
+                        userId: userId,
+                    },
+                }),
+            ]);
+            return {
+                transactions,
+                total,
+                hasMore: skip + take < total,
+            };
+        }
+        catch (error) {
+            console.error('Error fetching package transactions:', error);
+            throw new common_1.BadRequestException('Failed to fetch package transactions');
+        }
+    }
+    async getXCoinTransactionById(id) {
+        try {
+            const transaction = await this.prisma.xCoinTransaction.findUnique({
+                where: { id },
+            });
+            return transaction;
+        }
+        catch (error) {
+            console.error('Error fetching single XCoin transaction:', error);
+            throw new common_1.BadRequestException('Failed to fetch XCoin transaction');
+        }
+    }
+    async getSmileCoinTransactions(params) {
+        try {
+            const { userId, skip, take, sortBy, sortOrder } = params;
+            const orderBy = {};
+            if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+                orderBy[sortBy] = sortOrder;
+            }
+            else {
+                orderBy.createdAt = sortOrder;
+            }
+            const [transactions, total] = await Promise.all([
+                this.prisma.transaction.findMany({
+                    where: {
+                        userId: userId,
+                        specialPricing: true,
+                    },
+                    orderBy,
+                    skip,
+                    take,
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                role: true,
+                            },
+                        },
+                        transactionPackages: {
+                            include: {
+                                package: true,
+                            },
+                        },
+                    },
+                }),
+                this.prisma.transaction.count({
+                    where: {
+                        userId: userId,
+                        specialPricing: true,
+                    },
+                }),
+            ]);
+            return {
+                transactions,
+                total,
+                hasMore: skip + take < total,
+            };
+        }
+        catch (error) {
+            console.error('Error fetching Smile coin transactions:', error);
+            throw new common_1.BadRequestException('Failed to fetch Smile coin transactions');
         }
     }
 };

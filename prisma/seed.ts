@@ -20,8 +20,26 @@ async function main() {
   await prisma.smileCoinBalance.deleteMany(); // Add this line to clear smile coin balances before users
   await prisma.user.deleteMany();
   await prisma.vendorExchangeRate.deleteMany(); // Add this line
+  await prisma.region.deleteMany(); // Add this line to clear regions last
 
   console.log('🗑️  Cleared existing data');
+
+  // Seed Regions
+  const regions = await prisma.region.createMany({
+    data: [
+      { name: 'Default', status: 'ACTIVE' },
+      { name: 'Malaysia', status: 'ACTIVE' },
+      { name: 'Myanmar', status: 'ACTIVE' },
+      { name: 'Singapore', status: 'ACTIVE' },
+      { name: 'Thailand', status: 'ACTIVE' },
+      { name: 'Brazil', status: 'ACTIVE' },
+      { name: 'Indonesia', status: 'ACTIVE' },
+      { name: 'Vietnam', status: 'ACTIVE' },
+      { name: 'Philippines', status: 'ACTIVE' },
+    ],
+  });
+
+  console.log('🌍 Created regions');
 
   // Seed RegionGameVendor relationships
   const regionGameVendors = await prisma.regionGameVendor.createMany({

@@ -20,6 +20,7 @@ export class VendorRatesController {
   async updateVendorRate(@Body() updateData: {
     vendorName: string;
     vendorCurrency: string;
+    region: string;
     newRate: number;
     updatedBy: string;
     reason?: string;
@@ -27,6 +28,7 @@ export class VendorRatesController {
     const updatedRate = await this.vendorRatesService.updateVendorRate(
       updateData.vendorName,
       updateData.vendorCurrency,
+      updateData.region,
       updateData.newRate,
       updateData.updatedBy,
       updateData.reason
@@ -39,14 +41,16 @@ export class VendorRatesController {
     };
   }
 
-  @Get('history/:vendorName/:vendorCurrency')
+  @Get('history/:vendorName/:vendorCurrency/:region')
   async getVendorRateHistory(
     @Param('vendorName') vendorName: string,
-    @Param('vendorCurrency') vendorCurrency: string
+    @Param('vendorCurrency') vendorCurrency: string,
+    @Param('region') region: string
   ) {
     const history = await this.vendorRatesService.getVendorRateHistory(
       vendorName,
-      vendorCurrency
+      vendorCurrency,
+      region
     );
 
     return {

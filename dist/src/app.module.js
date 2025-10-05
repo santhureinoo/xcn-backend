@@ -18,6 +18,7 @@ const transactions_module_1 = require("./transactions/transactions.module");
 const vendor_rates_module_1 = require("./vendor-rates/vendor-rates.module");
 const markups_module_1 = require("./markups/markups.module");
 const region_game_vendor_module_1 = require("./region-game-vendor/region-game-vendor.module");
+const region_module_1 = require("./region/region.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -35,7 +36,8 @@ exports.AppModule = AppModule = __decorate([
             vendor_rates_module_1.VendorRatesModule,
             transactions_module_1.TransactionsModule,
             markups_module_1.MarkupsModule,
-            region_game_vendor_module_1.RegionGameVendorModule
+            region_game_vendor_module_1.RegionGameVendorModule,
+            region_module_1.RegionModule
         ],
     })
 ], AppModule);

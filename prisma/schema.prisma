@@ -21,6 +21,9 @@ model RegionGameVendor {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // Relations
+  regionRef   Region   @relation(fields: [region], references: [name])
+  
   // Indexes for efficient filtering
   @@index([region])
   @@index([gameName])
@@ -144,11 +147,12 @@ model User {
 
 model VendorExchangeRate {
   id              String      @id @default(uuid())
-  vendorName      String      // "Smile", "Razor Gold", etc.
-  vendorCurrency  String      // "SMILE_COIN", "RAZOR_GOLD_COIN", etc.
-  xCoinRate       Decimal       // How many xCoins needed for 1 vendor coin
+  vendorName      String                           // "Smile", "Razor Gold", etc.
+  vendorCurrency  String                           // "SMILE_COIN", "RAZON_COIN", etc.
+  region          String      @default("Default")    // "Brazil", "Thailand", "Philippines", etc.
+  xCoinRate       Decimal                          // How many xCoins needed for 1 vendor coin
   trend           RateTrend   @default(STABLE)
-  change24h       Decimal       @default(0)
+  change24h       Decimal     @default(0)
   isActive        Boolean     @default(true)
   
   // Rate history for rollback if needed
@@ -160,21 +164,24 @@ model VendorExchangeRate {
   updateReason    String?     // Why was it updated
 
   packages        Package[]
+  regionRef       Region      @relation(fields: [region], references: [name])
   
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
-  @@unique([vendorName])
+  @@unique([vendorName, region])
   
   // Indexes for better query performance
   @@index([vendorName])
   @@index([vendorCurrency])
+  @@index([region])
   @@index([xCoinRate])
   @@index([trend])
   @@index([isActive])
   @@index([createdAt])
   // Composite indexes for common query patterns
   @@index([vendorName, vendorCurrency])
+  @@index([vendorName, region])
   @@index([vendorCurrency, isActive])
   @@index([trend, isActive])
   @@index([isActive, createdAt])
@@ -216,7 +223,7 @@ model Package {
   markupAppliedAt     DateTime?   // When markup was applied
   
   // Optional: Add relation to vendor exchange rate
-  vendorRate          VendorExchangeRate? @relation(fields: [vendor], references: [vendorName])
+  vendorRate          VendorExchangeRate? @relation(fields: [vendor], references: [id])
   
   // NEW: Markup relation
   appliedMarkup       Markup?     @relation(fields: [markupId], references: [id])
@@ -237,6 +244,7 @@ model Package {
   
   // Relations - Junction table for many-to-many relationship between Transaction and Package
   transactionPackages TransactionPackage[]
+  regionRef           Region      @relation(fields: [region], references: [name])
   
   // Indexes for better query performance
   @@index([name])
@@ -254,7 +262,6 @@ model Package {
   @@index([packageStatus, createdAt])
   @@index([type, createdAt])
   @@index([region, gameName])
-  @@index([region, vendor])
   @@index([gameName, vendor])
   @@index([featured, packageStatus])
   
@@ -284,6 +291,32 @@ model TransactionPackage {
   @@map("transaction_packages")
 }
 
+model Region {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  status    RegionStatus @default(ACTIVE)
+  
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  // Relations
+  packages         Package[]
+  vendorRates      VendorExchangeRate[]
+  smileCoinBalances SmileCoinBalance[]
+  regionGameVendors RegionGameVendor[]
+  transactions      Transaction[]
+  
+  // Indexes
+  @@index([name])
+  @@index([status])
+  @@index([createdAt])
+  @@map("regions")
+}
+
+enum RegionStatus {
+  ACTIVE
+  INACTIVE
+}
 model Currency {
   id          String   @id @default(uuid())
   code        String   @unique
@@ -388,6 +421,7 @@ model Transaction {
   user              User     @relation(fields: [userId], references: [id])
   transactionPackages TransactionPackage[]
   orders            Order[]
+  regionRef         Region?  @relation(fields: [region], references: [name])
   
   // Indexes for better query performance
   @@index([type])
@@ -564,6 +598,7 @@ model SmileCoinBalance {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id])
+  regionRef   Region   @relation(fields: [region], references: [name])
 
   @@unique([userId, region]) // Ensures one balance per region per user
   @@map("smile_coin_balances")

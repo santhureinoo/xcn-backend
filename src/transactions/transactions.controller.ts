@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
 export class TransactionsController {
-  constructor(private readonly transactionsService: TransactionsService) {}
+  constructor(private readonly transactionsService: TransactionsService) { }
 
   @Get()
   async getTransactions(@Query() query: any) {
@@ -115,7 +115,7 @@ export class TransactionsController {
   async createOrder(@Request() req, @Body() createOrderDto: any) {
     try {
       const userId = req.user?.userId || req.user?.sub;
-    
+
       if (!userId) {
         return {
           success: false,
@@ -140,20 +140,18 @@ export class TransactionsController {
         };
       }
 
-      const order = await this.transactionsService.createOrder({
-        packageId,
-        playerId,
-        identifier,
-        packageCode,
-        gameName,
-        userId,
-        playerDetails
-      });
-
+       const order = await this.transactionsService.createOrder({
+          packageId,
+          playerId,
+          identifier,
+          gameName,
+          userId,
+          playerDetails
+        });
       return {
-        success: true,
+        success: order.success,
         order,
-        orderId: order.order.id,
+        orderId: order.order?.id,
         message: 'Order created successfully'
       };
     } catch (error) {
@@ -164,7 +162,7 @@ export class TransactionsController {
       };
     }
   }
-  
+
   // NEW: Get smile coin balance by region
   @Get('smile-balance/:region')
   async getSmileCoinBalanceByRegion(@Request() req, @Param('region') region: string) {
@@ -191,6 +189,191 @@ export class TransactionsController {
         success: false,
         message: error.message || 'Failed to fetch smile coin balance',
         statusCode: 500,
+      };
+    }
+  }
+
+  // NEW: Get XCoin transactions for a user
+  @Get('xcoin')
+  async getXCoinTransactions(
+    @Request() req,
+    @Query() query: any
+  ) {
+    try {
+      const userId = req.user?.userId || req.user?.sub;
+      if (!userId) {
+        return {
+          success: false,
+          message: 'User not authenticated'
+        };
+      }
+
+      const {
+        page = '1',
+        limit = '50',
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = query;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const take = parseInt(limit);
+
+      const result = await this.transactionsService.getXCoinTransactions({
+        userId,
+        skip,
+        take,
+        sortBy,
+        sortOrder
+      });
+
+      return {
+        success: true,
+        transactions: result.transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: result.total,
+          totalPages: Math.ceil(result.total / parseInt(limit)),
+          hasMore: result.hasMore
+        }
+      };
+    } catch (error) {
+      console.error('Error in getXCoinTransactions:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+ }
+
+  // NEW: Get package transactions for a user
+  @Get('packages')
+  async getPackageTransactions(
+    @Request() req,
+    @Query() query: any
+  ) {
+    try {
+      const userId = req.user?.userId || req.user?.sub;
+      if (!userId) {
+        return {
+          success: false,
+          message: 'User not authenticated'
+        };
+      }
+
+      const {
+        page = '1',
+        limit = '50',
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = query;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const take = parseInt(limit);
+
+      const result = await this.transactionsService.getPackageTransactions({
+        userId,
+        skip,
+        take,
+        sortBy,
+        sortOrder
+      });
+
+      return {
+        success: true,
+        transactions: result.transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: result.total,
+          totalPages: Math.ceil(result.total / parseInt(limit)),
+          hasMore: result.hasMore
+        }
+      };
+    } catch (error) {
+      console.error('Error in getPackageTransactions:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  // NEW: Get single XCoin transaction by ID
+  @Get('xcoin/:id')
+  async getXCoinTransactionById(@Param('id') id: string) {
+    try {
+      const transaction = await this.transactionsService.getXCoinTransactionById(id);
+
+      if (!transaction) {
+        return {
+          success: false,
+          message: 'XCoin transaction not found'
+        };
+      }
+
+      return {
+        success: true,
+        transaction
+      };
+    } catch (error) {
+      console.error('Error in getXCoinTransactionById:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  // NEW: Get Smile coin transactions for a user
+  @Get('smile')
+  async getSmileCoinTransactions(
+    @Request() req,
+    @Query() query: any
+  ) {
+    try {
+      const userId = req.user?.userId || req.user?.sub;
+      if (!userId) {
+        return {
+          success: false,
+          message: 'User not authenticated'
+        };
+      }
+
+      const {
+        page = '1',
+        limit = '50',
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = query;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const take = parseInt(limit);
+
+      const result = await this.transactionsService.getSmileCoinTransactions({
+        userId,
+        skip,
+        take,
+        sortBy,
+        sortOrder
+      });
+
+      return {
+        success: true,
+        transactions: result.transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: result.total,
+          totalPages: Math.ceil(result.total / parseInt(limit)),
+          hasMore: result.hasMore
+        }
+      };
+    } catch (error) {
+      console.error('Error in getSmileCoinTransactions:', error);
+      return {
+        success: false,
+        message: error.message
       };
     }
   }

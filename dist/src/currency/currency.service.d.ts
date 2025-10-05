@@ -3,20 +3,20 @@ export declare class CurrencyService {
     private prisma;
     constructor(prisma: PrismaService);
     getCurrencyStats(): Promise<{
-        totalXCoinsInCirculation: number | import("@prisma/client/runtime/library").Decimal;
-        totalXCoinsPurchased24h: number | import("@prisma/client/runtime/library").Decimal;
+        totalXCoinsInCirculation: number;
+        totalXCoinsPurchased24h: number;
         totalXCoinsSpent24h: number;
-        totalRevenue24h: number | import("@prisma/client/runtime/library").Decimal;
-        averageExchangeRate: number | import("@prisma/client/runtime/library").Decimal;
+        totalRevenue24h: number;
+        averageExchangeRate: number;
         activeUsers24h: number;
     }>;
     getExchangeRates(): Promise<{
         id: string;
         fromCurrency: string;
         toCurrency: string;
-        rate: import("@prisma/client/runtime/library").Decimal;
+        rate: number;
         trend: string;
-        change24h: import("@prisma/client/runtime/library").Decimal;
+        change24h: number;
         lastUpdated: string;
         fromCurrencyName: string;
         toCurrencyName: string;
@@ -38,9 +38,9 @@ export declare class CurrencyService {
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        isActive: boolean;
         code: string;
         flag: string | null;
-        isActive: boolean;
     }[]>;
     createExchangeRate(fromCurrency: string, toCurrency: string, rate: number): Promise<{
         id: string;

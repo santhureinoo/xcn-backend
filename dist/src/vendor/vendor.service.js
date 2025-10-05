@@ -55,6 +55,7 @@ let VendorService = VendorService_1 = class VendorService {
                 },
             },
         });
+        console.log('Starting vendor call process for procesVendorcall:', vendorCall.id);
         return this.attemptVendorCall(vendorCall.id, playerId, serverId);
     }
     async attemptVendorCall(vendorCallId, playerId, serverId) {
@@ -108,6 +109,7 @@ let VendorService = VendorService_1 = class VendorService {
                     });
                     this.logger.warn(`⏳ Scheduling retry ${vendorCall.retryCount + 1}/${vendorCall.maxRetries} for ${vendorCall.vendorName} in ${nextRetryDelay}ms`);
                     setTimeout(() => {
+                        console.log('Retrying vendor call now... in setTimeout');
                         this.attemptVendorCall(vendorCallId, playerId, serverId);
                     }, nextRetryDelay);
                     return {
@@ -157,7 +159,10 @@ let VendorService = VendorService_1 = class VendorService {
         }
     }
     async makeVendorApiCall(vendorName, packageCode, playerId, serverId) {
-        const config = this.vendorConfigs[vendorName];
+        const vendorExchangRate = await this.prisma.vendorExchangeRate.findFirst({
+            where: { id: vendorName }
+        });
+        const config = this.vendorConfigs[vendorExchangRate?.vendorCurrency || ''];
         if (!config) {
             return {
                 success: false,
@@ -166,7 +171,7 @@ let VendorService = VendorService_1 = class VendorService {
                 shouldRetry: false,
             };
         }
-        switch (vendorName) {
+        switch (vendorExchangRate?.vendorCurrency) {
             case 'SMILE_COIN':
                 return this.callSmileCoinApi(config, packageCode, playerId, serverId);
             case 'RAZOR_GOLD':
@@ -181,6 +186,12 @@ let VendorService = VendorService_1 = class VendorService {
         }
     }
     async callSmileCoinApi(config, packageCode, playerId, serverId) {
+        return {
+            success: true,
+            vendorOrderId: 'tte',
+            vendorResponse: {},
+            shouldRetry: false,
+        };
         try {
             const request = {
                 playerId,
@@ -323,6 +334,7 @@ let VendorService = VendorService_1 = class VendorService {
         this.logger.log(`Processing ${pendingRetries.length} pending retries`);
         for (const vendorCall of pendingRetries) {
             const { playerId, serverId } = vendorCall.requestPayload;
+            console.log('Processing retry for vendor call in process:', vendorCall.id);
             this.attemptVendorCall(vendorCall.id, playerId, serverId)
                 .catch(error => {
                 this.logger.error(`Error processing retry ${vendorCall.id}: ${error.message}`);

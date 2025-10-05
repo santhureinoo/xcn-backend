@@ -65,11 +65,11 @@ let CurrencyService = class CurrencyService {
                 })
             ]);
             return {
-                totalXCoinsInCirculation: totalXCoinsInCirculation._sum.balance || 0,
-                totalXCoinsPurchased24h: totalXCoinsPurchased24h._sum.amount || 0,
-                totalXCoinsSpent24h: Math.abs(parseFloat(totalXCoinsSpent24h._sum.amount?.toString() || '0')),
-                totalRevenue24h: totalRevenue24h._sum.totalCost || 0,
-                averageExchangeRate: averageExchangeRate?.rate || 100,
+                totalXCoinsInCirculation: parseFloat((totalXCoinsInCirculation._sum.balance || 0).toString()),
+                totalXCoinsPurchased24h: parseFloat((totalXCoinsPurchased24h._sum.amount || 0).toString()),
+                totalXCoinsSpent24h: Math.abs(parseFloat((totalXCoinsSpent24h._sum.amount || 0).toString())),
+                totalRevenue24h: parseFloat((totalRevenue24h._sum.totalCost || 0).toString()),
+                averageExchangeRate: parseFloat((averageExchangeRate?.rate || 100).toString()),
                 activeUsers24h
             };
         }
@@ -93,9 +93,9 @@ let CurrencyService = class CurrencyService {
                 id: rate.id,
                 fromCurrency: rate.fromCurrency,
                 toCurrency: rate.toCurrency,
-                rate: rate.rate,
+                rate: parseFloat(rate.rate.toString()),
                 trend: rate.trend.toLowerCase(),
-                change24h: rate.change24h,
+                change24h: parseFloat(rate.change24h.toString()),
                 lastUpdated: rate.updatedAt.toISOString(),
                 fromCurrencyName: rate.fromCurrencyRef.name,
                 toCurrencyName: rate.toCurrencyRef.name

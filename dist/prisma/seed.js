@@ -18,7 +18,22 @@ async function main() {
     await prisma.smileCoinBalance.deleteMany();
     await prisma.user.deleteMany();
     await prisma.vendorExchangeRate.deleteMany();
+    await prisma.region.deleteMany();
     console.log('🗑️  Cleared existing data');
+    const regions = await prisma.region.createMany({
+        data: [
+            { name: 'Default', status: 'ACTIVE' },
+            { name: 'Malaysia', status: 'ACTIVE' },
+            { name: 'Myanmar', status: 'ACTIVE' },
+            { name: 'Singapore', status: 'ACTIVE' },
+            { name: 'Thailand', status: 'ACTIVE' },
+            { name: 'Brazil', status: 'ACTIVE' },
+            { name: 'Indonesia', status: 'ACTIVE' },
+            { name: 'Vietnam', status: 'ACTIVE' },
+            { name: 'Philippines', status: 'ACTIVE' },
+        ],
+    });
+    console.log('🌍 Created regions');
     const regionGameVendors = await prisma.regionGameVendor.createMany({
         data: [
             { region: 'Malaysia', gameName: 'Mobile Legends', vendorName: 'Razor Gold', isActive: true },

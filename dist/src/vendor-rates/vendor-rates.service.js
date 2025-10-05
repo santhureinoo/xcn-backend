@@ -17,9 +17,9 @@ let VendorRatesService = class VendorRatesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async updateVendorRate(vendorName, vendorCurrency, newXCoinRate, updatedBy, reason) {
+    async updateVendorRate(vendorName, vendorCurrency, region, newXCoinRate, updatedBy, reason) {
         const currentRate = await this.prisma.vendorExchangeRate.findUnique({
-            where: { vendorName: vendorName }
+            where: { vendorName_region: { vendorName, region } }
         });
         const trend = currentRate ?
             (newXCoinRate > parseFloat(currentRate.xCoinRate.toString()) ? 'UP' :
@@ -28,13 +28,16 @@ let VendorRatesService = class VendorRatesService {
             ((newXCoinRate - parseFloat(currentRate.xCoinRate.toString())) / parseFloat(currentRate.xCoinRate.toString())) * 100 : 0;
         let updatedRate;
         const oldRate = await this.prisma.vendorExchangeRate.findUnique({
-            where: { vendorName: vendorName }
+            where: { vendorName_region: { vendorName, region } }
         });
         if (oldRate) {
             updatedRate = await this.prisma.vendorExchangeRate.update({
-                where: { vendorName: vendorName },
+                where: { vendorName_region: { vendorName, region } },
                 data: {
+                    vendorCurrency,
                     xCoinRate: newXCoinRate,
+                    trend: trend,
+                    change24h: change24h,
                     updatedBy,
                     updateReason: reason
                 }
@@ -45,25 +48,29 @@ let VendorRatesService = class VendorRatesService {
                 data: {
                     vendorName,
                     vendorCurrency,
+                    region,
                     xCoinRate: newXCoinRate,
+                    trend: trend,
+                    change24h: change24h,
                     updatedBy,
                     updateReason: reason
                 }
             });
         }
-        await this.updatePackagePrices(vendorName, vendorCurrency, oldRate ? oldRate.xCoinRate : updatedRate.xCoinRate);
+        await this.updatePackagePrices(vendorName, vendorCurrency, region, oldRate ? oldRate.xCoinRate : updatedRate.xCoinRate);
         return updatedRate;
     }
-    async updatePackagePrices(vendorName, vendorCurrency, oldRate) {
+    async updatePackagePrices(vendorName, vendorCurrency, region, oldRate) {
         const packages = await this.prisma.package.findMany({
             where: {
                 vendor: vendorName,
                 vendorCurrency: vendorCurrency,
+                region: region,
                 isPriceLocked: false
             }
         });
         const vendorRate = await this.prisma.vendorExchangeRate.findUnique({
-            where: { vendorName }
+            where: { vendorName_region: { vendorName, region } }
         });
         if (!vendorRate || vendorRate.xCoinRate === null)
             return;
@@ -138,17 +145,23 @@ let VendorRatesService = class VendorRatesService {
         return Math.max(0, finalVendorPrice);
     }
     async getVendorRates() {
-        return this.prisma.vendorExchangeRate.findMany({
+        const rates = await this.prisma.vendorExchangeRate.findMany({
             where: { isActive: true },
             orderBy: [
                 { vendorName: 'asc' },
                 { vendorCurrency: 'asc' }
             ]
         });
+        return rates.map(rate => ({
+            ...rate,
+            xCoinRate: parseFloat(rate.xCoinRate.toString()),
+            change24h: parseFloat(rate.change24h.toString()),
+            previousRate: rate.previousRate ? parseFloat(rate.previousRate.toString()) : null
+        }));
     }
-    async getVendorRateHistory(vendorName, vendorCurrency) {
+    async getVendorRateHistory(vendorName, vendorCurrency, region) {
         return this.prisma.vendorExchangeRate.findUnique({
-            where: { vendorName },
+            where: { vendorName_region: { vendorName, region } },
             select: {
                 rateHistory: true,
                 previousRate: true,

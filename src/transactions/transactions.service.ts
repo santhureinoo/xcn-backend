@@ -481,68 +481,67 @@ export class TransactionsService {
 
   // NEW: Process multiple packages with vendor API simulation
   private async processPackage(
-    pkgs: any[], // Multiple packages
+    pkg: any, // Multiple packages
     playerId: string,
     identifier: string,
     orderId: string
   ): Promise<{ success: boolean; error?: string; }> {
     try {
       const results: any[] = [];
+      const packageVendorCodes = pkg.vendorPackageCode.split(',').map((code: string) => code.trim());
 
-      // Process each package
-      for (let i = 0; i < pkgs.length; i++) {
-        const pkg = pkgs[i];
+      try {
+        console.log(`🔄 Processing package ${pkg.vendorPackageCode} for player ${playerId}...`);
 
-        try {
-          console.log(`🔄 Processing package ${pkg.vendorPackageCode} for player ${playerId}...`);
-
+        // Process each package
+        for (let i = 0; i < packageVendorCodes.length; i++) {
           // Call vendor service with retry logic
           const vendorResult = await this.vendorService.processVendorCall(
             orderId,
             pkg.vendor,
-            pkg.vendorPackageCode,
+            packageVendorCodes[i],
             playerId,
             identifier
           );
 
           if (vendorResult.success) {
-            console.log(`✅ Package ${pkg.vendorPackageCode} processed successfully for player ${playerId}`);
+            console.log(`✅ Package ${packageVendorCodes[i]} processed successfully for player ${playerId}`);
             results.push({
               success: true,
-              packageCode: pkg.vendorPackageCode,
+              packageCode: packageVendorCodes[i],
               vendorOrderId: vendorResult.vendorOrderId
             });
           } else {
-            console.log(`❌ Package ${pkg.vendorPackageCode} failed for player ${playerId}: ${vendorResult.error}`);
+            console.log(`❌ Package ${packageVendorCodes[i]} failed for player ${playerId}: ${vendorResult.error}`);
             results.push({
               success: false,
-              packageCode: pkg.vendorPackageCode,
+              packageCode: packageVendorCodes[i],
               error: vendorResult.error || 'Vendor API call failed'
             });
           }
-
-        } catch (packageError) {
-          console.error(`💥 Error processing package ${pkg.vendorPackageCode}:`, packageError);
-          results.push({
-            success: false,
-            packageCode: pkg.vendorPackageCode,
-            error: packageError.message
-          });
         }
+
+      } catch (packageError) {
+        console.error(`💥 Error processing package ${pkg.vendorPackageCode}:`, packageError);
+        results.push({
+          success: false,
+          packageCode: pkg.vendorPackageCode,
+          error: packageError.message
+        });
       }
 
       // Determine overall success
       const successfulPackages = results.filter(r => r.success);
       const failedPackages = results.filter(r => !r.success);
 
-      if (successfulPackages.length === pkgs.length) {
+      if (successfulPackages.length === packageVendorCodes.length) {
         // All packages successful
         return { success: true };
       } else if (successfulPackages.length > 0) {
         // Partial success
         return {
           success: false,
-          error: `Partial success: ${successfulPackages.length}/${pkgs.length} packages processed. Failed: ${failedPackages.map(f => f.packageCode).join(', ')}`
+          error: `Partial success: ${successfulPackages.length}/${packageVendorCodes.length} packages processed. Failed: ${failedPackages.map(f => f.packageCode).join(', ')}`
         };
       } else {
         // All failed
@@ -567,7 +566,6 @@ export class TransactionsService {
     packageId: string;
     playerId: string;
     identifier: string;
-    packageCode: string;
     gameName: string;
     userId: string;
     playerDetails: {
@@ -578,7 +576,8 @@ export class TransactionsService {
   }) {
     try {
       // Parse package codes (split by comma if multiple)
-      const packageCodes = orderData.packageCode.split(',').map(code => code.trim());
+      // [2222,444,5555]
+      // const packageCodes = orderData.packageCode.split(',').map(code => code.trim());
 
       // Get user to check role for pricing
       const user = await this.prisma.user.findUnique({
@@ -592,47 +591,54 @@ export class TransactionsService {
         throw new NotFoundException('User not found');
       }
 
-      // Get all packages
-      const packages: Package[] = [];
+      // Parse package IDs to handle duplicates
+      const packageIds = orderData.packageId.split(',').map(id => id.trim());
 
-      for (const code of packageCodes) {
-        // Find package by vendor code
-        const pkg = await this.prisma.package.findFirst({
-          where: {
-            vendorPackageCode: {
-              contains: code,
-            },
-            gameName: orderData.gameName,
+      // Find unique packages
+      const uniquePackageIds = [...new Set(packageIds)];
+      const uniquePackages = await this.prisma.package.findMany({
+        where: {
+          id: {
+            in: uniquePackageIds,
           },
-        });
-
-        if (!pkg) {
-          throw new NotFoundException(`Package with code ${code} not found`);
+          gameName: orderData.gameName,
+        },
+        include: {
+          vendorRate: true,
         }
+      });
 
-        packages.push(pkg);
+      if (!uniquePackages || uniquePackages.length === 0) {
+        throw new NotFoundException(`Package not found`);
       }
 
-      // Calculate costs using helper method
+      // Create an array with packages repeated according to the original request (for duplicates)
+      const pkg = packageIds.map(id => {
+        const foundPackage = uniquePackages.find(p => p.id === id);
+        if (!foundPackage) {
+          throw new NotFoundException(`Package with ID ${id} not found`);
+        }
+        return foundPackage;
+      });
+
+      // Calculate overall costs for the entire order
       const { xCoinCost: totalPrice, smileCoinCost, hasSmilePackages } =
-        this.packagesService.calculateMixedVendorCosts(packages, user.role);
+        await this.packagesService.calculateMixedVendorCosts(pkg, user.role);
 
       // Check user balance - handle both xCoin and Smile coin
       if (hasSmilePackages) {
         // Check each package's vendor and region
-        for (const pkg of packages) {
-          console.log(pkg);
-          // If vendor is smile, check the smile coin balance for that region
-          if (pkg.vendor.toLowerCase() === 'smile') {
-            const region = pkg.region;
+        for (const pkgItem of pkg) {
+          if (pkgItem.vendor.toLowerCase() === 'smile') {
+            const region = pkgItem.region;
             if (!region) {
               throw new BadRequestException('Region not found for Smile package');
             }
 
             // Find the smile coin balance for the specific region
             const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
-            const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
-            
+            const packagePrice = this.packagesService.getPackagePrice(pkgItem, user.role);
+
             if (selectedRegionalBalance) {
               if (parseFloat(selectedRegionalBalance.balance.toString()) < packagePrice) {
                 throw new BadRequestException(`insufficient Smile Coin`);
@@ -662,30 +668,30 @@ export class TransactionsService {
           gameUserId: orderData.playerDetails.playerId,
           serverId: orderData.playerDetails.identifier,
           playerName: `Player_${orderData.playerDetails.playerId}`,
-          region: packages[0].region,
+          region: pkg[0]?.region, // Use region from first package
           totalCost: combinedCost,
-          quantity: packages.length,
+          quantity: pkg.length, // Set quantity to number of packages
           specialPricing: hasSmilePackages,
           priceType: hasSmilePackages ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
         },
       });
 
-      // NEW: Create transaction-package relationships
-      for (const pkg of packages) {
-        const packagePrice = this.packagesService.getPackagePrice(pkg, user.role);
-        const isSpecial = this.packagesService.isSpecialPricing(pkg, user.role);
+      // Process each package individually and create transactionPackage entries
+      for (const pkgItem of pkg) {
+        const packagePrice = this.packagesService.getPackagePrice(pkgItem, user.role);
+        const isSpecial = await this.packagesService.isSpecialPricing(pkgItem, user.role);
 
         await this.prisma.transactionPackage.create({
-        data: {
-          transactionId: transaction.id,
-          packageId: pkg.id,
-          quantity: 1,
-          unitPrice: packagePrice,
-          totalPrice: packagePrice,
-          basePrice: parseFloat(pkg.price.toString()),
-          markupApplied: isSpecial ? 0 : (parseFloat(pkg.price.toString()) - parseFloat(pkg.baseVendorCost.toString())),
-          markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
-        },
+          data: {
+            transactionId: transaction.id,
+            packageId: pkgItem.id,
+            quantity: 1,
+            unitPrice: packagePrice,
+            totalPrice: packagePrice,
+            basePrice: parseFloat(pkgItem.price.toString()),
+            markupApplied: isSpecial ? 0 : (parseFloat(pkgItem.price.toString()) - parseFloat(pkgItem.baseVendorCost.toString())),
+            markupType: isSpecial ? 'BASE_VENDOR_COST' : 'VENDOR_PRICE',
+          },
         });
       }
 
@@ -696,14 +702,22 @@ export class TransactionsService {
           gameUserId: orderData.playerId,
           serverId: orderData.identifier,
           playerName: `Player_${orderData.playerId}`,
-          packageKeywords: packageCodes.join(','), // Store all codes
+          packageKeywords: pkg.map(p => p.vendorPackageCode).join(','), // Store all codes
           status: 'PENDING',
           totalAmount: combinedCost,
         },
       });
 
-      // Process the packages - FIXED: Pass packages array
-      const result = await this.processPackage(packages, orderData.playerId, orderData.identifier, order.id);
+      // Process each package individually
+      let overallResult: { success: boolean; error?: string } = { success: true };
+      for (const singlePackage of pkg) {
+        const packageResult = await this.processPackage(singlePackage, orderData.playerId, orderData.identifier, order.id);
+        if (!packageResult.success) {
+          overallResult = { success: false, error: packageResult.error || 'Package processing failed' };
+          break; // Stop processing if any package fails
+        }
+      }
+      const result = overallResult;
 
       // Update transaction and order status
       const finalStatus = result.success ? 'COMPLETED' : 'FAILED';
@@ -732,7 +746,7 @@ export class TransactionsService {
 
         if (smileCoinCost > 0) {
           // Decrement the regional smile coin balance
-          const region = packages[0]?.region;
+          const region = pkg[0]?.region; // Use region from first package
           if (region) {
             const selectedRegionalBalance = user.smileCoinBalances.find(bal => bal.region === region);
             if (selectedRegionalBalance) {
@@ -766,7 +780,7 @@ export class TransactionsService {
           id: order.id,
           status: finalStatus,
           amount: combinedCost,
-          packageName: packages.map(p => p.name).join(', '),
+          packageName: pkg.map(p => p.name).join(', '), // Join all package names
           playerId: orderData.playerId,
           createdAt: order.createdAt,
         },
@@ -863,6 +877,188 @@ export class TransactionsService {
     } catch (error) {
       console.error('Error fetching smile coin balance for region:', error);
       return 0;
+    }
+  }
+
+  // NEW: Get XCoin transactions for a user
+  async getXCoinTransactions(params: {
+    userId: string;
+    skip: number;
+    take: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) {
+    try {
+      const { userId, skip, take, sortBy, sortOrder } = params;
+
+      // Build orderBy clause
+      const orderBy: any = {};
+      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+        orderBy[sortBy] = sortOrder;
+      } else {
+        orderBy.createdAt = sortOrder;
+      }
+
+      const [transactions, total] = await Promise.all([
+        this.prisma.xCoinTransaction.findMany({
+          where: {
+            userId: userId,
+          },
+          orderBy,
+          skip,
+          take,
+        }),
+        this.prisma.xCoinTransaction.count({
+          where: {
+            userId: userId,
+          },
+        }),
+      ]);
+
+      return {
+        transactions,
+        total,
+        hasMore: skip + take < total,
+      };
+    } catch (error) {
+      console.error('Error fetching XCoin transactions:', error);
+      throw new BadRequestException('Failed to fetch XCoin transactions');
+    }
+  }
+
+  // NEW: Get package transactions (regular transactions) for a user
+  async getPackageTransactions(params: {
+    userId: string;
+    skip: number;
+    take: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) {
+    try {
+      const { userId, skip, take, sortBy, sortOrder } = params;
+
+      // Build orderBy clause
+      const orderBy: any = {};
+      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+        orderBy[sortBy] = sortOrder;
+      } else {
+        orderBy.createdAt = sortOrder;
+      }
+
+      const [transactions, total] = await Promise.all([
+        this.prisma.transaction.findMany({
+          where: {
+            userId: userId,
+          },
+          orderBy,
+          skip,
+          take,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+              },
+            },
+            transactionPackages: {
+              include: {
+                package: true,
+              },
+            },
+          },
+        }),
+        this.prisma.transaction.count({
+          where: {
+            userId: userId,
+          },
+        }),
+      ]);
+
+      return {
+        transactions,
+        total,
+        hasMore: skip + take < total,
+      };
+    } catch (error) {
+      console.error('Error fetching package transactions:', error);
+      throw new BadRequestException('Failed to fetch package transactions');
+    }
+  }
+
+  // NEW: Get single XCoin transaction by ID
+  async getXCoinTransactionById(id: string) {
+    try {
+      const transaction = await this.prisma.xCoinTransaction.findUnique({
+        where: { id },
+      });
+
+      return transaction;
+    } catch (error) {
+      console.error('Error fetching single XCoin transaction:', error);
+      throw new BadRequestException('Failed to fetch XCoin transaction');
+    }
+  }
+
+ // NEW: Get Smile coin transactions for a user (transactions with special pricing for Smile vendor)
+ async getSmileCoinTransactions(params: {
+    userId: string;
+    skip: number;
+    take: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) {
+    try {
+      const { userId, skip, take, sortBy, sortOrder } = params;
+
+      // Build orderBy clause
+      const orderBy: any = {};
+      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+        orderBy[sortBy] = sortOrder;
+      } else {
+        orderBy.createdAt = sortOrder;
+      }
+
+      const [transactions, total] = await Promise.all([
+        this.prisma.transaction.findMany({
+          where: {
+            userId: userId,
+            specialPricing: true, // Transactions with special pricing (Smile coin transactions)
+          },
+          orderBy,
+          skip,
+          take,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+              },
+            },
+            transactionPackages: {
+              include: {
+                package: true,
+              },
+            },
+          },
+        }),
+        this.prisma.transaction.count({
+          where: {
+            userId: userId,
+            specialPricing: true, // Transactions with special pricing (Smile coin transactions)
+          },
+        }),
+      ]);
+
+      return {
+        transactions,
+        total,
+        hasMore: skip + take < total,
+      };
+    } catch (error) {
+      console.error('Error fetching Smile coin transactions:', error);
+      throw new BadRequestException('Failed to fetch Smile coin transactions');
     }
   }
 }

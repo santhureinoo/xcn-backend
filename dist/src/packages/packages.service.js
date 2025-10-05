@@ -42,32 +42,36 @@ let PackagesService = class PackagesService {
         this.prisma = prisma;
     }
     getPackagePrice(packageData, userRole) {
-        if (userRole === 'RESELLER' && packageData.vendor === 'Smile') {
+        if (userRole === 'RESELLER' && packageData.vendorRate?.vendorName === 'Smile') {
             return Number(packageData.baseVendorCost) || 0;
         }
         return Number(packageData.price) || 0;
     }
-    isSpecialPricing(packageData, userRole) {
-        return userRole === 'RESELLER' && packageData.vendor === 'Smile';
+    async isSpecialPricing(packageData, userRole) {
+        const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+            where: { id: packageData.vendor }
+        });
+        return userRole === 'RESELLER' && vendorExchangeRate?.vendorName === 'Smile';
     }
-    calculateMixedVendorCosts(packages, userRole) {
+    async calculateMixedVendorCosts(packages, userRole) {
         let xCoinCost = 0;
         let smileCoinCost = 0;
         let hasSmilePackages = false;
-        packages.forEach(pkg => {
-            if (this.isSpecialPricing(pkg, userRole)) {
+        for (const pkg of packages) {
+            if (await this.isSpecialPricing(pkg, userRole)) {
                 smileCoinCost += this.getPackagePrice(pkg, userRole);
                 hasSmilePackages = true;
             }
             else {
                 xCoinCost += this.getPackagePrice(pkg, userRole);
             }
-        });
+        }
         return { xCoinCost, smileCoinCost, hasSmilePackages };
     }
     transformPackageForResponse(packageData) {
         return {
             ...packageData,
+            vendorName: packageData.vendorRate?.vendorName || null,
             vendorPackageCodes: packageData.vendorPackageCode ? packageData.vendorPackageCode.split(',') : [],
             packageStatus: typeof packageData.packageStatus === 'string' ? packageData.packageStatus.toLowerCase() : packageData.packageStatus,
             type: packageData.type?.toLowerCase() || 'diamond',
@@ -87,14 +91,25 @@ let PackagesService = class PackagesService {
             if (!createPackageDto.vendorPackageCodes || !Array.isArray(createPackageDto.vendorPackageCodes) || createPackageDto.vendorPackageCodes.length === 0) {
                 throw new common_1.BadRequestException('vendorPackageCodes must be a non-empty array');
             }
-            const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+            console.log(createPackageDto.vendor);
+            let vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
                 where: {
                     vendorName: createPackageDto.vendor,
+                    region: createPackageDto.region,
                     isActive: true
                 }
             });
             if (!vendorExchangeRate) {
-                throw new common_1.BadRequestException(`Vendor '${createPackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+                vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+                    where: {
+                        vendorName: createPackageDto.vendor,
+                        region: "Default",
+                        isActive: true
+                    }
+                });
+            }
+            if (!vendorExchangeRate) {
+                throw new common_1.BadRequestException(`Vendor '${createPackageDto.vendor}' with region '${createPackageDto.region}' not found or is not active in the system. No default rate available either. Please add the vendor exchange rate first.`);
             }
             const packageData = await this.prisma.package.create({
                 data: {
@@ -110,10 +125,10 @@ let PackagesService = class PackagesService {
                     duration: Number(createPackageDto.duration) || 0,
                     region: createPackageDto.region,
                     gameName: createPackageDto.gameName,
-                    vendor: createPackageDto.vendor,
+                    vendor: vendorExchangeRate.id,
                     vendorPackageCode: createPackageDto.vendorPackageCodes.join(','),
                     vendorPrice: Number(createPackageDto.vendorPrice) || 0,
-                    vendorCurrency: vendorExchangeRate.vendorCurrency || '',
+                    vendorCurrency: vendorExchangeRate.vendorCurrency || 'SMILE_COIN',
                     currency: createPackageDto.currency || 'USD',
                     packageStatus: 1,
                     resellKeyword: createPackageDto.resellKeyword || '',
@@ -226,6 +241,11 @@ let PackagesService = class PackagesService {
                                 flatAmountAdd: true,
                                 isActive: true,
                             }
+                        },
+                        vendorRate: {
+                            select: {
+                                vendorName: true,
+                            }
                         }
                     }
                 }),
@@ -284,18 +304,34 @@ let PackagesService = class PackagesService {
             if (!existingPackage || existingPackage.length === 0) {
                 throw new common_1.NotFoundException(`Package with ID ${id} not found`);
             }
-            if (updatePackageDto.vendor !== undefined) {
-                const vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+            if (updatePackageDto.vendor !== undefined || updatePackageDto.region !== undefined) {
+                const currentPackage = existingPackage[0];
+                const vendorName = updatePackageDto.vendor !== undefined ? updatePackageDto.vendor : currentPackage.vendor;
+                let region = updatePackageDto.region !== undefined ? updatePackageDto.region : currentPackage.region;
+                let vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
                     where: {
-                        vendorName: updatePackageDto.vendor,
+                        vendorName: vendorName,
+                        region: region,
                         isActive: true
                     }
                 });
                 if (!vendorExchangeRate) {
-                    throw new common_1.BadRequestException(`Vendor '${updatePackageDto.vendor}' not found or is not active in the system. Please add the vendor exchange rate first.`);
+                    vendorExchangeRate = await this.prisma.vendorExchangeRate.findFirst({
+                        where: {
+                            vendorName: vendorName,
+                            region: "Default",
+                            isActive: true
+                        }
+                    });
+                }
+                if (!vendorExchangeRate) {
+                    throw new common_1.BadRequestException(`Vendor '${vendorName}' with region '${region}' not found or is not active in the system. No default rate available either. Please add the vendor exchange rate first.`);
                 }
                 if (updatePackageDto.vendorCurrency === undefined) {
-                    updatePackageDto.vendorCurrency = vendorExchangeRate.vendorCurrency;
+                    updatePackageDto.vendorCurrency = vendorExchangeRate.vendorCurrency || 'SMILE_COIN';
+                }
+                if (updatePackageDto.vendor !== undefined) {
+                    updatePackageDto.vendor = vendorExchangeRate.id;
                 }
             }
             const updateData = {};
@@ -559,6 +595,42 @@ let PackagesService = class PackagesService {
             throw new common_1.BadRequestException('Failed to find package');
         }
     }
+    async getPackagesByGame(gameName) {
+        try {
+            const packages = await this.prisma.package.findMany({
+                where: {
+                    gameName: {
+                        contains: gameName,
+                    },
+                },
+                include: {
+                    appliedMarkup: {
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            percentageAdd: true,
+                            flatAmountAdd: true,
+                            isActive: true,
+                        }
+                    },
+                    vendorRate: {
+                        select: {
+                            vendorName: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                },
+            });
+            return packages.map(pkg => this.transformPackageForResponse(pkg));
+        }
+        catch (error) {
+            console.error('Failed to fetch packages for game:', error);
+            throw new common_1.BadRequestException('Failed to fetch packages for game: ' + error.message);
+        }
+    }
     async searchMultiplePackagesByCodes(codes, gameName) {
         try {
             const packages = await this.prisma.package.findMany({
@@ -628,7 +700,7 @@ let PackagesService = class PackagesService {
     }
     async getRegionsByGame(gameName) {
         try {
-            const regions = await this.prisma.package.findMany({
+            const packages = await this.prisma.package.findMany({
                 where: {
                     gameName: {
                         contains: gameName,
@@ -636,13 +708,21 @@ let PackagesService = class PackagesService {
                 },
                 select: {
                     region: true,
+                    vendorRate: {
+                        select: {
+                            vendorName: true,
+                        },
+                    },
                 },
                 distinct: ['region'],
                 orderBy: {
                     region: 'asc',
                 },
             });
-            return regions.map(r => r.region).filter(region => region);
+            return packages.map(p => ({
+                region: p.region,
+                vendorName: p.vendorRate?.vendorName || null,
+            })).filter(p => p.region);
         }
         catch (error) {
             console.error('Error fetching regions by game:', error);

@@ -29,15 +29,15 @@ let VendorRatesController = class VendorRatesController {
         };
     }
     async updateVendorRate(updateData) {
-        const updatedRate = await this.vendorRatesService.updateVendorRate(updateData.vendorName, updateData.vendorCurrency, updateData.newRate, updateData.updatedBy, updateData.reason);
+        const updatedRate = await this.vendorRatesService.updateVendorRate(updateData.vendorName, updateData.vendorCurrency, updateData.region, updateData.newRate, updateData.updatedBy, updateData.reason);
         return {
             success: true,
             message: 'Vendor rate updated successfully',
             rate: updatedRate
         };
     }
-    async getVendorRateHistory(vendorName, vendorCurrency) {
-        const history = await this.vendorRatesService.getVendorRateHistory(vendorName, vendorCurrency);
+    async getVendorRateHistory(vendorName, vendorCurrency, region) {
+        const history = await this.vendorRatesService.getVendorRateHistory(vendorName, vendorCurrency, region);
         return {
             success: true,
             history
@@ -59,11 +59,12 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VendorRatesController.prototype, "updateVendorRate", null);
 __decorate([
-    (0, common_1.Get)('history/:vendorName/:vendorCurrency'),
+    (0, common_1.Get)('history/:vendorName/:vendorCurrency/:region'),
     __param(0, (0, common_1.Param)('vendorName')),
     __param(1, (0, common_1.Param)('vendorCurrency')),
+    __param(2, (0, common_1.Param)('region')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], VendorRatesController.prototype, "getVendorRateHistory", null);
 exports.VendorRatesController = VendorRatesController = __decorate([
